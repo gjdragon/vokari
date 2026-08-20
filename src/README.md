@@ -69,6 +69,17 @@ Two things worth knowing:
 
 If you ever want higher-fidelity, human-recorded audio, that's a separate future add-on (e.g. the Free Dictionary API's audio clips) rather than an extension of this — it only covers English and would need a new host permission, so it's not part of the default setup.
 
+## Sentence practice (Gemini API)
+
+On the review card, a **✨ Make a sentence** button generates one example sentence built around the word you're studying, using Gemini. It's meant as a memorization aid: seeing a word used in context sticks better than the bare word/translation pair.
+
+- **Setup**: open the toolbar popup → **✨ Sentence practice settings (Gemini API)** → paste in your own Gemini API key (get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)). Optionally set a specific model name (defaults to `gemini-3.6-flash`). The key is stored locally via `chrome.storage.local` and only ever sent to Google's Gemini endpoint when you click the button — never anywhere else.
+- **If you get a 404 "model no longer available" error**: Google retires/renames Flash model IDs periodically. Type the current model name (check [ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models) or the error message itself, which usually names the replacement) into the Model field in settings — no code changes needed.
+- **How it picks words**: each sentence targets the current card's word and tries to weave in 2 more randomly-picked words from your saved library, so review doubles as light spaced repetition across words, not just one at a time. Gemini is told it's fine to use ordinary common words to keep the sentence natural, and to drop any of the 2 extra words if including them would force something awkward.
+- **On demand**: sentences are generated only when you click the button (not automatically for every card), and each generation calls the API fresh — click **✨ Make another sentence** for a different one. Generated sentences aren't saved; they're only kept for the current review session so you get variety next time you review the same word.
+- The words actually used in the sentence are bolded so they're easy to spot at a glance.
+- If no API key is set, or the request fails (bad key, rate limit, network issue), the button shows an inline error instead of breaking the review flow.
+
 ## Popup collision with other extensions (e.g. Google Translate's own popup)
 
 If you also use the Google Translate browser extension, its own select-to-translate popup and this extension's popup can compete for the same spot below your selection. To handle this, the extension now:
@@ -99,5 +110,5 @@ It's a manual two-click sync rather than automatic/real-time, but it keeps the e
 
 ## Possible next steps
 
-- Add pronunciation audio playback using the Web Speech API.
 - Automate the sync-folder workflow above with a Chrome alarm that periodically writes an export to a fixed path (would need the `downloads` permission's overwrite behavior, or File System Access API where supported).
+- Cache generated sentences persistently (not just per session) so you can revisit a favorite example later, or let Gemini vary difficulty based on the word's current level.

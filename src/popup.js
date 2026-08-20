@@ -2,16 +2,28 @@ const listEl = document.getElementById("list");
 const emptyEl = document.getElementById("empty");
 const searchEl = document.getElementById("search");
 const targetLangEl = document.getElementById("targetLang");
+const geminiApiKeyEl = document.getElementById("geminiApiKey");
+const geminiModelEl = document.getElementById("geminiModel");
 
 let library = [];
 
 async function load() {
-  const data = await chrome.storage.local.get(["library", "targetLang"]);
+  const data = await chrome.storage.local.get(["library", "targetLang", "geminiApiKey", "geminiModel"]);
   library = data.library || [];
   targetLangEl.value = data.targetLang || "zh-CN";
+  geminiApiKeyEl.value = data.geminiApiKey || "";
+  geminiModelEl.value = data.geminiModel || "";
   render();
   renderReviewBanner();
 }
+
+geminiApiKeyEl.addEventListener("change", () => {
+  chrome.storage.local.set({ geminiApiKey: geminiApiKeyEl.value.trim() });
+});
+
+geminiModelEl.addEventListener("change", () => {
+  chrome.storage.local.set({ geminiModel: geminiModelEl.value.trim() });
+});
 
 function renderReviewBanner() {
   const dueCount = library.filter((e) => (e.due || 0) <= Date.now()).length;

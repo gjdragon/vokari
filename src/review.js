@@ -16,6 +16,9 @@ const speakBtn = document.getElementById("speakBtn");
 const lastResultEl = document.getElementById("lastResult");
 const scopeEl = document.getElementById("scope");
 const amountEl = document.getElementById("amount");
+const sentenceBtn = document.getElementById("sentenceBtn");
+const sentenceBox = document.getElementById("sentenceBox");
+const sentenceErrorEl = document.getElementById("sentenceError");
 
 const LEVEL_LABEL = { 1: "Monthly", 2: "Every 2 weeks", 3: "Weekly", 4: "Every 3 days", 5: "Daily" };
 
@@ -23,6 +26,7 @@ let queue = [];       // fixed list for this session — Prev/Next just move the
 let index = 0;
 let revealed = false;
 let graded = new Map(); // key -> { remembered, level, interval } for cards graded this session
+let sentences = new Map(); // key -> { sentence, wordsUsed } generated this session (on-demand, not persisted)
 
 function keyFor(entry) {
   return `${entry.word}|${entry.savedAt}`;
@@ -52,6 +56,7 @@ document.getElementById("startBtn").addEventListener("click", loadQueue);
 async function loadQueue() {
   lastResultEl.textContent = "";
   graded = new Map();
+  sentences = new Map();
   index = 0;
   const scope = scopeEl.value;
   const amount = Math.max(1, parseInt(amountEl.value, 10) || 1);
@@ -69,11 +74,13 @@ function showCurrent() {
   if (queue.length === 0) {
     cardEl.style.display = "none";
     controlsEl.style.display = "none";
+    document.getElementById("sentencePanel").style.display = "none";
     progressEl.textContent = "";
     emptyEl.style.display = "block";
     document.querySelector("#empty p").textContent = noResultsMessage();
     return;
   }
+  document.getElementById("sentencePanel").style.display = "flex";
 
   const entry = current();
   const key = keyFor(entry);
@@ -112,7 +119,74 @@ function showCurrent() {
   nextBtn.disabled = index === queue.length - 1;
 
   progressEl.textContent = `${index + 1} of ${queue.length}`;
+
+  showSentenceForCurrent();
 }
+
+function renderSentence(entry, result) {
+  const words = [entry.word, ...(result.wordsUsed || [])].filter(Boolean);
+  let html = escapeHtml(result.sentence);
+  // Bold each used word (case-insensitive, whole-word match) for quick scanning.
+  words.forEach((w) => {
+    const re = new RegExp(`\\b(${escapeRegExp(w)})\\b`, "gi");
+    html = html.replace(re, "<mark>$1</mark>");
+  });
+  sentenceBox.innerHTML = html;
+  sentenceBox.style.display = "block";
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function showSentenceForCurrent() {
+  sentenceErrorEl.style.display = "none";
+  sentenceErrorEl.textContent = "";
+  sentenceBox.style.display = "none";
+  sentenceBox.innerHTML = "";
+  sentenceBtn.disabled = false;
+
+  if (queue.length === 0) return;
+  const entry = current();
+  const key = keyFor(entry);
+  const cached = sentences.get(key);
+  if (cached) {
+    sentenceBtn.textContent = "✨ Make another sentence";
+    renderSentence(entry, cached);
+  } else {
+    sentenceBtn.textContent = "✨ Make a sentence";
+  }
+}
+
+sentenceBtn.addEventListener("click", () => {
+  if (queue.length === 0) return;
+  const entry = current();
+  const key = keyFor(entry);
+
+  sentenceBtn.disabled = true;
+  sentenceBtn.textContent = "Generating…";
+  sentenceErrorEl.style.display = "none";
+  sentenceBox.style.display = "none";
+
+  chrome.runtime.sendMessage({ type: "GENERATE_SENTENCE", key }, (res) => {
+    sentenceBtn.disabled = false;
+    if (!res || !res.ok) {
+      sentenceBtn.textContent = sentences.has(key) ? "✨ Make another sentence" : "✨ Make a sentence";
+      sentenceErrorEl.textContent = (res && res.error) || "Something went wrong generating the sentence.";
+      sentenceErrorEl.style.display = "block";
+      return;
+    }
+    sentences.set(key, { sentence: res.sentence, wordsUsed: res.wordsUsed });
+    sentenceBtn.textContent = "✨ Make another sentence";
+    renderSentence(entry, { sentence: res.sentence, wordsUsed: res.wordsUsed });
+  });
+});
 
 cardEl.addEventListener("click", () => {
   if (revealed) return;

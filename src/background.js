@@ -24,6 +24,82 @@ async function translateText(text) {
   return { translation, sourceLang, targetLang };
 }
 
+// --- Sentence practice (Gemini API) ---
+// Generates one example sentence per review card, on demand, weaving in the
+// target word plus 2-3 other saved words when it can be done naturally.
+// Requires the user's own Gemini API key, set in the popup's settings panel.
+const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
+
+// Pick up to `count` other library entries at random to try to include
+// alongside the target word. Purely for variety/context — Gemini is told
+// it's fine to drop any that don't fit.
+function pickRelatedWords(library, targetEntry, count) {
+  const candidates = library.filter(
+    (e) => e.word.toLowerCase() !== targetEntry.word.toLowerCase() || e.savedAt !== targetEntry.savedAt
+  );
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  return candidates.slice(0, count);
+}
+
+async function generateSentence(targetEntry, relatedWords) {
+  const { geminiApiKey, geminiModel } = await chrome.storage.local.get(["geminiApiKey", "geminiModel"]);
+  if (!geminiApiKey) {
+    throw new Error("No Gemini API key set. Add one in the extension popup under Sentence practice settings.");
+  }
+  const model = (geminiModel || DEFAULT_GEMINI_MODEL).trim();
+  const otherWords = relatedWords.map((w) => w.word);
+
+  const prompt = `Write ONE natural, meaningful English sentence for a language learner studying vocabulary.
+
+Required word (must appear, in any grammatical form): "${targetEntry.word}"
+Other saved words to include if it stays natural: ${otherWords.length ? otherWords.join(", ") : "(none)"}
+
+Rules:
+- The sentence must clearly demonstrate the meaning of "${targetEntry.word}".
+- Use as many of the other listed words as fit naturally; skip any that would force an awkward sentence.
+- You may freely use other common English words not in the list, to make it grammatical and meaningful.
+- One sentence only. Keep it simple and clear enough for a learner, not overly long or complex.
+- Respond with ONLY valid JSON, no markdown code fences, no commentary, in exactly this shape:
+{"sentence": "...", "wordsUsed": ["word1", "word2"]}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+    model
+  )}:generateContent?key=${encodeURIComponent(geminiApiKey)}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7 },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Gemini request failed (${res.status}): ${errText.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  const rawText =
+    data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+  const cleaned = rawText.replace(/```json|```/g, "").trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    // Model didn't return clean JSON — fall back to using the raw text as the sentence.
+    parsed = { sentence: cleaned, wordsUsed: [] };
+  }
+  if (!parsed.sentence) throw new Error("Gemini response didn't include a sentence.");
+
+  return { sentence: parsed.sentence, wordsUsed: Array.isArray(parsed.wordsUsed) ? parsed.wordsUsed : [] };
+}
+
 // --- 5-level Leitner-style scheduling ---
 // Level 1 = best known (reviewed monthly)  ...  Level 5 = struggling (reviewed daily).
 // New words start at level 3 (weekly) and move exactly one level per review:
@@ -72,6 +148,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "REVIEW_CARD") {
     reviewCard(message.key, message.remembered).then((result) => sendResponse({ ok: true, ...result }));
+    return true;
+  }
+
+  if (message.type === "GENERATE_SENTENCE") {
+    (async () => {
+      try {
+        const { library = [] } = await chrome.storage.local.get("library");
+        const targetEntry = library.find((e) => keyFor(e) === message.key);
+        if (!targetEntry) {
+          sendResponse({ ok: false, error: "Word not found in library." });
+          return;
+        }
+        const related = pickRelatedWords(library, targetEntry, 2);
+        const { sentence, wordsUsed } = await generateSentence(targetEntry, related);
+        sendResponse({ ok: true, sentence, wordsUsed, offeredWords: related.map((w) => w.word) });
+      } catch (err) {
+        console.error(err);
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
     return true;
   }
 });
