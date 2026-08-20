@@ -46,8 +46,10 @@ function render(filter = "") {
     const div = document.createElement("div");
     div.className = "entry";
     const date = new Date(entry.savedAt).toLocaleDateString();
+    const level = entry.level || 3;
     div.innerHTML = `
       <span class="del" data-word="${entry.word}" data-time="${entry.savedAt}">✕ remove</span>
+      <span class="lvl" title="Review level ${level}/5" style="float:right; margin-right:6px; font-size:11px; color:#888; background:#1f2430; border-radius:8px; padding:1px 6px;">L${level}</span>
       <div class="word">${entry.word}</div>
       <div class="translation">${entry.translation}</div>
       <div class="meta">${date}${entry.context ? " · " + truncate(entry.context, 60) : ""}</div>
@@ -187,11 +189,16 @@ document.getElementById("importJsonFile").addEventListener("change", async (e) =
   );
 });
 
-// Given two entries for the same word, return whichever represents more SRS progress.
+// Given two entries for the same word, return whichever represents more review progress.
+// Lower level = more familiar/further along (level 1 = monthly, level 5 = daily/struggling).
 function pickFurtherAlong(a, b) {
-  const repA = a.repetition || 0;
-  const repB = b.repetition || 0;
-  if (repA !== repB) return repA > repB ? a : b;
+  const levelA = a.level || 3;
+  const levelB = b.level || 3;
+  if (levelA !== levelB) return levelA < levelB ? a : b;
+
+  const countA = a.reviewCount || 0;
+  const countB = b.reviewCount || 0;
+  if (countA !== countB) return countA > countB ? a : b;
 
   const revA = a.lastReviewed || 0;
   const revB = b.lastReviewed || 0;

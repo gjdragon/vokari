@@ -15,6 +15,37 @@
       justify-content: center;
       height: 100vh;
     }
+    #scopeBar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #aaa;
+    }
+    #scopeBar select, #scopeBar input {
+      background: #1f2430;
+      color: #eee;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-size: 13px;
+    }
+    #scopeBar input[type="number"] {
+      width: 46px;
+    }
+    #scopeBar button {
+      background: #2a2f3a;
+      color: #eee;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    #scopeBar button:hover {
+      background: #3a4050;
+    }
     #progress {
       color: #888;
       font-size: 13px;
@@ -34,6 +65,17 @@
       cursor: pointer;
       text-align: center;
       gap: 14px;
+      position: relative;
+    }
+    #levelBadge {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      font-size: 11px;
+      color: #888;
+      background: #12141a;
+      border-radius: 10px;
+      padding: 3px 9px;
     }
     #word {
       font-size: 28px;
@@ -67,9 +109,14 @@
       cursor: pointer;
       color: white;
     }
-    #again { background: #e74c3c; }
-    #good { background: #4c8dff; }
-    #easy { background: #2ecc71; }
+    #forgot { background: #e74c3c; }
+    #remembered { background: #2ecc71; }
+    #lastResult {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #888;
+      min-height: 16px;
+    }
     #empty {
       text-align: center;
       color: #888;
@@ -80,18 +127,30 @@
   </style>
 </head>
 <body>
+  <div id="scopeBar">
+    <span>Review:</span>
+    <select id="scope">
+      <option value="due">Due now</option>
+      <option value="days">Last N days</option>
+      <option value="weeks">Last N weeks</option>
+      <option value="months">Last N months</option>
+    </select>
+    <input id="amount" type="number" min="1" value="7" style="display:none;" />
+    <button id="startBtn">Go</button>
+  </div>
   <div id="progress"></div>
   <div id="card" style="display:none;">
+    <div id="levelBadge"></div>
     <div id="word"></div>
     <div id="translation"></div>
     <div id="context"></div>
     <div id="hint">Click the card to reveal the translation</div>
   </div>
   <div id="controls">
-    <button id="again">Again</button>
-    <button id="good">Good</button>
-    <button id="easy">Easy</button>
+    <button id="forgot">❌ Forgot</button>
+    <button id="remembered">✅ Remembered</button>
   </div>
+  <div id="lastResult"></div>
   <div id="empty" style="display:none;">
     <h2>All caught up 🎉</h2>
     <p>No words are due for review right now. Come back tomorrow, or keep highlighting new words as you read.</p>

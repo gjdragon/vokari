@@ -25,12 +25,33 @@ Highlight any word/phrase on a webpage → see a translation popup → click Sav
 - The word length filter (in `content.js`) skips selections longer than 60 characters, to avoid triggering on full paragraphs. Adjust as needed.
 - Each saved entry stores the word, translation, source language, target language, a snippet of surrounding context, the source URL, and a timestamp — useful later if you want to build flashcards with real usage examples.
 
-## Daily flashcard review (spaced repetition)
+## Daily flashcard review (5-level system)
 
-- Every saved word is scheduled using the same SM-2 algorithm Anki uses: new words are due immediately, and each time you review one, the next due date stretches out further if you got it right (1 day → 6 days → longer each time), or resets if you got it wrong.
-- Open the toolbar popup — if any words are due, you'll see a banner with a **Review** button. Clicking it opens a flashcard page in a new tab.
-- Click a card to reveal the translation, then grade yourself: **Again** (didn't know it — resets the schedule), **Good** (knew it — normal spacing), or **Easy** (knew it well — spaces out further).
-- A background alarm checks once a day and fires a Chrome notification if you have cards due, so you don't have to remember to check.
+Each word sits at a **level from 1 to 5**, which determines how often it comes up for review:
+
+| Level | Cadence | Meaning |
+|---|---|---|
+| 1 | Monthly | Well known |
+| 2 | Every 2 weeks | Getting solid |
+| 3 | Weekly | **Default for new words** |
+| 4 | Every 3 days | Still shaky |
+| 5 | Daily | Struggling |
+
+Grading is deliberately simple — two buttons, no judgment calls about "how easy":
+- **✅ Remembered** → level drops by 1 (moves towards monthly). A word at level 3 that you remember goes to level 2.
+- **❌ Forgot** → level rises by 1 (moves towards daily). A word at level 3 that you forget goes to level 4.
+
+Levels are floored at 1 and capped at 5, so a well-known word can't schedule out past monthly, and a hard word can't review more than once a day.
+
+**Choosing what to review** — the review page (opened via the popup's **Review** button, or the daily notification) has a scope selector at the top:
+- **Due now** (default) — the normal schedule: whatever has hit its level's due date.
+- **Last N days / weeks / months** — pull in every word added in that window regardless of due date, useful for cramming a recent batch (e.g. everything from a trip, an article, or this week's reading) on demand.
+
+The card shows the word's current level (e.g. "Level 3/5 · Weekly") so you can see where it stands before you grade it, and after grading you'll see a short confirmation of the level change and next review date.
+
+Words saved before this system existed (or SM-2-era entries) are migrated automatically the first time you open the review page — they're assigned level 3 without losing their existing due date.
+
+A background alarm still checks once a day and fires a Chrome notification if any words are due, so you don't have to remember to check.
 
 ## Popup collision with other extensions (e.g. Google Translate's own popup)
 
@@ -45,10 +66,10 @@ This is a general fix (not hardcoded to Google Translate specifically), so it sh
 
 The extension stays fully local — nothing leaves your machine automatically. To keep two or more PCs' word lists in sync, use the two new buttons in the popup footer:
 
-- **Export (Sync)** — downloads a `vocabulary_sync.json` file containing every field, including SRS review progress (repetition count, ease, due date). This is different from the CSV/Anki exports above, which are one-way and don't round-trip.
+- **Export (Sync)** — downloads a `vocabulary_sync.json` file containing every field, including review progress (level, due date, review count). This is different from the CSV/Anki exports above, which are one-way and don't round-trip.
 - **Import (Sync)** — pick a previously exported `.json` file and it **merges** into your current library:
   - Words that don't exist yet are added.
-  - Words that exist on both sides keep whichever copy has more review progress (so importing an older file can never undo reviews you've already done elsewhere).
+  - Words that exist on both sides keep whichever copy is further along (lower level = more familiar, wins ties by review count) — so importing an older file can never undo reviews you've already done elsewhere.
   - A summary ("X new, Y updated, Z already up to date") shows after each import.
 
 **Recommended workflow — sync via a cloud-drive folder you already have (Dropbox/Google Drive/OneDrive/iCloud):**
@@ -62,6 +83,5 @@ It's a manual two-click sync rather than automatic/real-time, but it keeps the e
 
 ## Possible next steps
 
-- Add spaced-repetition scheduling (e.g. simple SM-2 algorithm) directly in the popup. *(done — see SM-2 review system above)*
 - Add pronunciation audio playback using the Web Speech API.
 - Automate the sync-folder workflow above with a Chrome alarm that periodically writes an export to a fixed path (would need the `downloads` permission's overwrite behavior, or File System Access API where supported).
