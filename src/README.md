@@ -49,6 +49,12 @@ Levels are floored at 1 and capped at 5, so a well-known word can't schedule out
 
 The card shows the word's current level (e.g. "Level 3/5 · Weekly") so you can see where it stands before you grade it, and after grading you'll see a short confirmation of the level change and next review date.
 
+**Navigating the deck** — you're not locked into one-card-at-a-time grading:
+- **◀ Prev / Next ▶** move between cards without revealing the translation, so you can skim the words in a session before deciding where to focus. Left/Right arrow keys do the same.
+- **✅ Knew it** grades a word as remembered *without* needing to click the card and reveal the translation first — for words you're confident on, this is a one-click pass straight to the next card.
+- Clicking the card still reveals the translation, after which **❌ Forgot** / **✅ Remembered** grade it normally.
+- If you navigate back (Prev) to a card you already graded this session, it reopens showing your answer with a "Graded this session" note instead of the grading buttons, so you can't accidentally grade the same card twice.
+
 Words saved before this system existed (or SM-2-era entries) are migrated automatically the first time you open the review page — they're assigned level 3 without losing their existing due date.
 
 A background alarm still checks once a day and fires a Chrome notification if any words are due, so you don't have to remember to check.
