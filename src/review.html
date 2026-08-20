@@ -17,11 +17,14 @@
     }
     #scopeBar {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 8px;
       margin-bottom: 16px;
       font-size: 13px;
       color: #aaa;
+      max-width: 460px;
+      justify-content: center;
     }
     #scopeBar select, #scopeBar input {
       background: #1f2430;
@@ -45,6 +48,25 @@
     }
     #scopeBar button:hover {
       background: #3a4050;
+    }
+    #levelFilter {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #levelFilter label {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: #1f2430;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 3px 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    #levelFilter input {
+      margin: 0;
     }
     #progress {
       color: #888;
@@ -136,6 +158,13 @@
       <option value="months">Last N months</option>
     </select>
     <input id="amount" type="number" min="1" value="7" style="display:none;" />
+    <span id="levelFilter">
+      <label><input type="checkbox" class="lvl-cb" value="1" checked />L1</label>
+      <label><input type="checkbox" class="lvl-cb" value="2" checked />L2</label>
+      <label><input type="checkbox" class="lvl-cb" value="3" checked />L3</label>
+      <label><input type="checkbox" class="lvl-cb" value="4" checked />L4</label>
+      <label><input type="checkbox" class="lvl-cb" value="5" checked />L5</label>
+    </span>
     <button id="startBtn">Go</button>
   </div>
   <div id="progress"></div>

@@ -22,6 +22,13 @@ function keyFor(entry) {
   return `${entry.word}|${entry.savedAt}`;
 }
 
+function noResultsMessage() {
+  const checked = document.querySelectorAll(".lvl-cb:checked").length;
+  if (checked === 0) return "No levels selected — tick at least one level (L1–L5) above and click Go.";
+  if (checked < 5) return "No words match the levels and scope you selected. Try widening the filter.";
+  return "No words are due for review right now. Come back tomorrow, or keep highlighting new words as you read.";
+}
+
 scopeEl.addEventListener("change", () => {
   amountEl.style.display = scopeEl.value === "due" ? "none" : "inline-block";
 });
@@ -32,7 +39,8 @@ async function loadQueue() {
   lastResultEl.textContent = "";
   const scope = scopeEl.value;
   const amount = Math.max(1, parseInt(amountEl.value, 10) || 1);
-  const response = await chrome.runtime.sendMessage({ type: "GET_REVIEW_QUEUE", scope, amount });
+  const levels = Array.from(document.querySelectorAll(".lvl-cb:checked")).map((cb) => Number(cb.value));
+  const response = await chrome.runtime.sendMessage({ type: "GET_REVIEW_QUEUE", scope, amount, levels });
   queue = response.queue || [];
   total = queue.length;
   showNext();
@@ -44,6 +52,7 @@ function showNext() {
     controlsEl.style.display = "none";
     progressEl.textContent = "";
     emptyEl.style.display = "block";
+    document.querySelector("#empty p").textContent = noResultsMessage();
     return;
   }
 

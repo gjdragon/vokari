@@ -43,9 +43,9 @@ Grading is deliberately simple — two buttons, no judgment calls about "how eas
 
 Levels are floored at 1 and capped at 5, so a well-known word can't schedule out past monthly, and a hard word can't review more than once a day.
 
-**Choosing what to review** — the review page (opened via the popup's **Review** button, or the daily notification) has a scope selector at the top:
-- **Due now** (default) — the normal schedule: whatever has hit its level's due date.
-- **Last N days / weeks / months** — pull in every word added in that window regardless of due date, useful for cramming a recent batch (e.g. everything from a trip, an article, or this week's reading) on demand.
+**Choosing what to review** — the review page (opened via the popup's **Review** button, or the daily notification) has controls at the top:
+- **Scope**: **Due now** (default, the normal schedule) or **Last N days / weeks / months** — pulls in every word added in that window regardless of due date, useful for cramming a recent batch (e.g. everything from a trip, an article, or this week's reading) on demand.
+- **Level filter** (L1–L5 checkboxes, all on by default): untick levels you don't want. E.g. tick only L4 and L5 to drill just the words you're struggling with, or only L1 to spot-check words you think you've mastered. Combines with the scope — "L4–L5 words due now" or "L1 words from the last month" both work.
 
 The card shows the word's current level (e.g. "Level 3/5 · Weekly") so you can see where it stands before you grade it, and after grading you'll see a short confirmation of the level change and next review date.
 

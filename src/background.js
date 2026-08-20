@@ -66,7 +66,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "GET_REVIEW_QUEUE") {
-    getReviewQueue(message.scope, message.amount).then((queue) => sendResponse({ ok: true, queue }));
+    getReviewQueue(message.scope, message.amount, message.levels).then((queue) => sendResponse({ ok: true, queue }));
     return true;
   }
 
@@ -97,7 +97,9 @@ async function saveWord(entry) {
 //  - scope "due": everything currently due (the normal daily/weekly/monthly schedule)
 //  - scope "days"/"weeks"/"months": everything added within the last `amount` of that
 //    unit, regardless of due date — for browsing/cramming a recent batch on demand.
-async function getReviewQueue(scope, amount) {
+// levels: optional array of level numbers (1-5) to restrict the queue to, e.g. [4, 5]
+// to drill just the words you're struggling with. Omitted/empty means no filter.
+async function getReviewQueue(scope, amount, levels) {
   const { library = [] } = await chrome.storage.local.get("library");
   library.forEach(ensureLevelFields);
   await chrome.storage.local.set({ library }); // persist any migration once
@@ -110,6 +112,10 @@ async function getReviewQueue(scope, amount) {
     queue = library.filter((e) => (e.savedAt || 0) >= cutoff);
   } else {
     queue = library.filter((e) => (e.due || 0) <= now);
+  }
+
+  if (Array.isArray(levels) && levels.length > 0) {
+    queue = queue.filter((e) => levels.includes(e.level));
   }
 
   // Most overdue / oldest first.
