@@ -112,4 +112,105 @@ function downloadFile(content, filename, mime) {
   chrome.downloads.download({ url, filename, saveAs: true });
 }
 
+// --- JSON export/import for syncing between PCs ---
+
+// Identity used to match "the same word" across two libraries.
+// Word (case-insensitive) + translation, same rule saveWord() already uses for de-duping.
+function entryKey(e) {
+  return `${e.word.toLowerCase()}|${e.translation}`;
+}
+
+document.getElementById("exportJson").addEventListener("click", () => {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    source: "Word Catcher",
+    version: 1,
+    library,
+  };
+  downloadFile(JSON.stringify(payload, null, 2), "vocabulary_sync.json", "application/json");
+});
+
+document.getElementById("importJsonBtn").addEventListener("click", () => {
+  document.getElementById("importJsonFile").click();
+});
+
+document.getElementById("importJsonFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = ""; // allow re-selecting the same file later
+  if (!file) return;
+
+  let incoming;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    incoming = Array.isArray(parsed) ? parsed : parsed.library;
+    if (!Array.isArray(incoming)) throw new Error("No word list found in file");
+  } catch (err) {
+    showImportStatus(`Import failed: ${err.message}`, true);
+    return;
+  }
+
+  const existingByKey = new Map(library.map((e) => [entryKey(e), e]));
+  let added = 0;
+  let updated = 0;
+  let unchanged = 0;
+
+  for (const incomingEntry of incoming) {
+    if (!incomingEntry || !incomingEntry.word || !incomingEntry.translation) continue;
+    const key = entryKey(incomingEntry);
+    const existing = existingByKey.get(key);
+
+    if (!existing) {
+      // New word — add as-is.
+      existingByKey.set(key, incomingEntry);
+      added++;
+      continue;
+    }
+
+    // Same word on both sides — keep whichever has made more review progress,
+    // so importing an older backup can never roll back progress made elsewhere.
+    const winner = pickFurtherAlong(existing, incomingEntry);
+    if (winner !== existing) {
+      existingByKey.set(key, winner);
+      updated++;
+    } else {
+      unchanged++;
+    }
+  }
+
+  library = Array.from(existingByKey.values());
+  await chrome.storage.local.set({ library });
+  render(searchEl.value);
+  renderReviewBanner();
+  showImportStatus(
+    `Imported ${incoming.length} word${incoming.length === 1 ? "" : "s"}: ${added} new, ${updated} updated, ${unchanged} already up to date.`
+  );
+});
+
+// Given two entries for the same word, return whichever represents more SRS progress.
+function pickFurtherAlong(a, b) {
+  const repA = a.repetition || 0;
+  const repB = b.repetition || 0;
+  if (repA !== repB) return repA > repB ? a : b;
+
+  const revA = a.lastReviewed || 0;
+  const revB = b.lastReviewed || 0;
+  if (revA !== revB) return revA > revB ? a : b;
+
+  // Tie: keep the one with the earlier savedAt (preserve original save date),
+  // but merge in any context/url the other one has if this one is missing it.
+  const keeper = (a.savedAt || 0) <= (b.savedAt || 0) ? a : b;
+  const other = keeper === a ? b : a;
+  if (!keeper.context && other.context) keeper.context = other.context;
+  if (!keeper.url && other.url) keeper.url = other.url;
+  return keeper;
+}
+
+function showImportStatus(message, isError = false) {
+  const el = document.getElementById("importStatus");
+  el.textContent = message;
+  el.style.color = isError ? "#e74c3c" : "#a9d6ff";
+  el.style.display = "block";
+}
+
 load();

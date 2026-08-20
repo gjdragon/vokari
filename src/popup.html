@@ -127,6 +127,12 @@
     <button id="exportAnki">Export Anki</button>
     <button id="clearAll">Clear All</button>
   </footer>
+  <footer style="border-top: none; padding-top: 0;">
+    <button id="exportJson" title="Full backup incl. review progress — use this to sync between PCs">Export (Sync)</button>
+    <button id="importJsonBtn" title="Merge a previously exported file into this library">Import (Sync)</button>
+    <input id="importJsonFile" type="file" accept="application/json" style="display:none;" />
+  </footer>
+  <div id="importStatus" style="display:none; margin: 0 12px 10px; padding: 8px 10px; background: #2a2f3a; border-radius: 6px; font-size: 12px; color: #a9d6ff;"></div>
   <script src="popup.js"></script>
 </body>
 </html>

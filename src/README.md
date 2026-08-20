@@ -41,8 +41,27 @@ If you also use the Google Translate browser extension, its own select-to-transl
 
 This is a general fix (not hardcoded to Google Translate specifically), so it should also help with other dictionary/translation extensions you might have installed. If you'd rather not deal with two popups at all, you can turn off Google Translate's own select-popup from its extension settings (click its toolbar icon → gear/settings) and rely on this extension's popup alone, since it already provides translation and saving in one place.
 
+## Syncing between multiple PCs (no cloud account needed)
+
+The extension stays fully local — nothing leaves your machine automatically. To keep two or more PCs' word lists in sync, use the two new buttons in the popup footer:
+
+- **Export (Sync)** — downloads a `vocabulary_sync.json` file containing every field, including SRS review progress (repetition count, ease, due date). This is different from the CSV/Anki exports above, which are one-way and don't round-trip.
+- **Import (Sync)** — pick a previously exported `.json` file and it **merges** into your current library:
+  - Words that don't exist yet are added.
+  - Words that exist on both sides keep whichever copy has more review progress (so importing an older file can never undo reviews you've already done elsewhere).
+  - A summary ("X new, Y updated, Z already up to date") shows after each import.
+
+**Recommended workflow — sync via a cloud-drive folder you already have (Dropbox/Google Drive/OneDrive/iCloud):**
+
+1. On PC A: click **Export (Sync)**, save `vocabulary_sync.json` straight into your synced folder (or move it there after saving).
+2. The synced folder replicates the file to PC B automatically (that's the cloud drive doing the file sync — the extension itself has no network access to your account).
+3. On PC B: click **Import (Sync)** and pick that file. Its words merge in.
+4. Repeat in reverse (export from B, import on A) to bring A up to date with anything added on B.
+
+It's a manual two-click sync rather than automatic/real-time, but it keeps the extension fully standalone with no account, no server, and no data leaving your control except through storage you already trust.
+
 ## Possible next steps
 
-- Add spaced-repetition scheduling (e.g. simple SM-2 algorithm) directly in the popup.
-- Sync library to Google Sheets or Notion via their APIs.
+- Add spaced-repetition scheduling (e.g. simple SM-2 algorithm) directly in the popup. *(done — see SM-2 review system above)*
 - Add pronunciation audio playback using the Web Speech API.
+- Automate the sync-folder workflow above with a Chrome alarm that periodically writes an export to a fixed path (would need the `downloads` permission's overwrite behavior, or File System Access API where supported).

@@ -133,6 +133,7 @@ function showPopup(selectedText, rect, contextSentence) {
             () => {
               e.target.textContent = "Saved ✓";
               e.target.classList.add("wc-saved");
+              setTimeout(removePopup, 700);
             }
           );
         });
