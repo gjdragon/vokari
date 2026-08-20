@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Review — My Vocabulary</title>
+  <style>
+    body {
+      margin: 0;
+      background: #12141a;
+      color: #eee;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    #progress {
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+    #card {
+      width: 420px;
+      min-height: 220px;
+      background: #1f2430;
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      cursor: pointer;
+      text-align: center;
+      gap: 14px;
+    }
+    #word {
+      font-size: 28px;
+      font-weight: 700;
+    }
+    #translation {
+      font-size: 20px;
+      color: #a9d6ff;
+      display: none;
+    }
+    #context {
+      font-size: 13px;
+      color: #777;
+      max-width: 340px;
+    }
+    #hint {
+      font-size: 12px;
+      color: #555;
+    }
+    #controls {
+      display: none;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    #controls button {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: white;
+    }
+    #again { background: #e74c3c; }
+    #good { background: #4c8dff; }
+    #easy { background: #2ecc71; }
+    #empty {
+      text-align: center;
+      color: #888;
+    }
+    #empty h2 {
+      color: #eee;
+    }
+  </style>
+</head>
+<body>
+  <div id="progress"></div>
+  <div id="card" style="display:none;">
+    <div id="word"></div>
+    <div id="translation"></div>
+    <div id="context"></div>
+    <div id="hint">Click the card to reveal the translation</div>
+  </div>
+  <div id="controls">
+    <button id="again">Again</button>
+    <button id="good">Good</button>
+    <button id="easy">Easy</button>
+  </div>
+  <div id="empty" style="display:none;">
+    <h2>All caught up 🎉</h2>
+    <p>No words are due for review right now. Come back tomorrow, or keep highlighting new words as you read.</p>
+  </div>
+  <script src="review.js"></script>
+</body>
+</html>

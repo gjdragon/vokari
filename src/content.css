@@ -1,0 +1,70 @@
+#wc-popup {
+  all: initial;
+  position: absolute;
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #1f2430;
+  color: #f0f0f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  font-size: 14px;
+  line-height: 1.4;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#wc-popup .wc-word {
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 15px;
+}
+
+#wc-popup .wc-translation {
+  color: #a9d6ff;
+}
+
+#wc-popup .wc-loading {
+  color: #888;
+  font-style: italic;
+}
+
+#wc-popup .wc-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+#wc-popup button {
+  all: unset;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+#wc-popup .wc-save-btn {
+  background: #4c8dff;
+  color: white;
+}
+
+#wc-popup .wc-save-btn:hover {
+  background: #3a7ae0;
+}
+
+#wc-popup .wc-save-btn.wc-saved {
+  background: #2ecc71;
+}
+
+#wc-popup .wc-close-btn {
+  background: #333;
+  color: #ccc;
+}
+
+#wc-popup .wc-close-btn:hover {
+  background: #444;
+}
