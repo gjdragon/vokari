@@ -12,6 +12,7 @@ const nextBtn = document.getElementById("nextBtn");
 const progressEl = document.getElementById("progress");
 const emptyEl = document.getElementById("empty");
 const levelBadgeEl = document.getElementById("levelBadge");
+const speakBtn = document.getElementById("speakBtn");
 const lastResultEl = document.getElementById("lastResult");
 const scopeEl = document.getElementById("scope");
 const amountEl = document.getElementById("amount");
@@ -25,6 +26,14 @@ let graded = new Map(); // key -> { remembered, level, interval } for cards grad
 
 function keyFor(entry) {
   return `${entry.word}|${entry.savedAt}`;
+}
+
+function speak(text, lang) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  if (lang) utterance.lang = lang;
+  window.speechSynthesis.speak(utterance);
 }
 
 function noResultsMessage() {
@@ -111,6 +120,12 @@ cardEl.addEventListener("click", () => {
   translationEl.style.display = "block";
   hintEl.style.display = "none";
   gradeRowEl.style.display = "flex";
+});
+
+speakBtn.addEventListener("click", (e) => {
+  e.stopPropagation(); // don't let this also trigger the card's reveal-on-click
+  const entry = current();
+  speak(entry.word, entry.sourceLang || undefined);
 });
 
 function grade(remembered) {

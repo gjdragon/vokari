@@ -29,6 +29,14 @@ document.getElementById("startReview").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("review.html") });
 });
 
+function speak(text, lang) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  if (lang) utterance.lang = lang;
+  window.speechSynthesis.speak(utterance);
+}
+
 function render(filter = "") {
   const filtered = library
     .slice()
@@ -50,6 +58,7 @@ function render(filter = "") {
     div.innerHTML = `
       <span class="del" data-word="${entry.word}" data-time="${entry.savedAt}">✕ remove</span>
       <span class="lvl" title="Review level ${level}/5" style="float:right; margin-right:6px; font-size:11px; color:#888; background:#1f2430; border-radius:8px; padding:1px 6px;">L${level}</span>
+      <span class="speak" title="Hear pronunciation" data-word="${entry.word}" data-lang="${entry.sourceLang || ""}" style="float:right; margin-right:6px; cursor:pointer;">🔊</span>
       <div class="word">${entry.word}</div>
       <div class="translation">${entry.translation}</div>
       <div class="meta">${date}${entry.context ? " · " + truncate(entry.context, 60) : ""}</div>
@@ -65,6 +74,12 @@ function render(filter = "") {
       await chrome.storage.local.set({ library });
       render(searchEl.value);
       renderReviewBanner();
+    });
+  });
+
+  listEl.querySelectorAll(".speak").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      speak(btn.getAttribute("data-word"), btn.getAttribute("data-lang") || undefined);
     });
   });
 }

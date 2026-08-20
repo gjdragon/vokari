@@ -83,6 +83,14 @@ function computePosition(rect, estimatedHeight) {
   return { top, left: Math.max(left, 8) };
 }
 
+function speak(text, lang) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel(); // stop anything already playing
+  const utterance = new SpeechSynthesisUtterance(text);
+  if (lang) utterance.lang = lang;
+  window.speechSynthesis.speak(utterance);
+}
+
 function showPopup(selectedText, rect, contextSentence) {
   removePopup();
 
@@ -92,6 +100,7 @@ function showPopup(selectedText, rect, contextSentence) {
     <div class="wc-word">${escapeHtml(selectedText)}</div>
     <div class="wc-translation wc-loading">Translating…</div>
     <div class="wc-actions">
+      <button class="wc-speak-btn" title="Hear pronunciation">🔊</button>
       <button class="wc-save-btn">Save</button>
       <button class="wc-close-btn">Close</button>
     </div>
@@ -105,6 +114,11 @@ function showPopup(selectedText, rect, contextSentence) {
   popupEl.style.left = `${left}px`;
 
   popupEl.querySelector(".wc-close-btn").addEventListener("click", removePopup);
+  // Speaks with no lang set until the translation response tells us the detected
+  // source language below — the browser will still fall back to a default voice.
+  popupEl.querySelector(".wc-speak-btn").addEventListener("click", () => {
+    speak(selectedText, popupEl.dataset.sourceLang);
+  });
 
   // Ask the background script to fetch the translation
   chrome.runtime.sendMessage(
@@ -115,6 +129,7 @@ function showPopup(selectedText, rect, contextSentence) {
       if (response && response.ok) {
         translationEl.textContent = response.translation;
         translationEl.classList.remove("wc-loading");
+        popupEl.dataset.sourceLang = response.sourceLang;
 
         popupEl.querySelector(".wc-save-btn").addEventListener("click", (e) => {
           chrome.runtime.sendMessage(

@@ -47,6 +47,16 @@
   text-align: center;
 }
 
+#wc-popup .wc-speak-btn {
+  background: #333;
+  color: #eee;
+  padding: 5px 9px;
+}
+
+#wc-popup .wc-speak-btn:hover {
+  background: #444;
+}
+
 #wc-popup .wc-save-btn {
   background: #4c8dff;
   color: white;

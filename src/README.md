@@ -59,6 +59,16 @@ Words saved before this system existed (or SM-2-era entries) are migrated automa
 
 A background alarm still checks once a day and fires a Chrome notification if any words are due, so you don't have to remember to check.
 
+## Pronunciation / sound
+
+Every word — in the on-page capture tooltip, the popup library list, and the review card — has a 🔊 button that speaks it aloud using Chrome's built-in Web Speech API (`speechSynthesis`). This is entirely local: no API key, no network permission, no extra cost, and it works offline once a voice is installed. It uses the language detected when you first translated the word (`sourceLang`), so pronunciation should default to the right accent/voice for that language automatically.
+
+Two things worth knowing:
+- **Voice quality/coverage varies by OS.** Windows, macOS, and ChromeOS all ship a different set of built-in voices, so some languages sound more natural than others, and a few obscure languages may fall back to a generic voice. There's nothing to configure — Chrome picks the best installed match for the word's language automatically.
+- **On the review card**, the 🔊 button works *before* you reveal the translation, so you can practice listening/pronunciation as its own recall step, separate from checking the meaning.
+
+If you ever want higher-fidelity, human-recorded audio, that's a separate future add-on (e.g. the Free Dictionary API's audio clips) rather than an extension of this — it only covers English and would need a new host permission, so it's not part of the default setup.
+
 ## Popup collision with other extensions (e.g. Google Translate's own popup)
 
 If you also use the Google Translate browser extension, its own select-to-translate popup and this extension's popup can compete for the same spot below your selection. To handle this, the extension now:
