@@ -49,15 +49,21 @@ function pickRelatedWords(library, targetEntry, count) {
 // word might have a different savedAt on two PCs. Each word keeps up to MAX_SENTENCES_
 // PER_WORD generations; when trimming, favorited ones are never dropped automatically.
 const MAX_SENTENCES_PER_WORD = 8;
+// Writing-practice attempts (user sentence + AI-polished version) use the same cache
+// shape and trimming rule, kept in a separate storage bucket.
+const MAX_USER_SENTENCES_PER_WORD = 8;
 
 function sentenceKeyFor(entry) {
   return `${entry.word.toLowerCase()}|${entry.translation}`;
 }
 
-function trimSentenceList(list) {
-  if (list.length <= MAX_SENTENCES_PER_WORD) return list;
-  const sorted = list.slice().sort((a, b) => (a.generatedAt || 0) - (b.generatedAt || 0));
-  while (sorted.length > MAX_SENTENCES_PER_WORD) {
+// Generic trimmer for either cache: records need only an `id`, `favorite`, and a
+// timestamp field (`generatedAt` for AI examples, `createdAt` for writing-practice
+// attempts) — whichever is present is used for oldest-first ordering.
+function trimRecordList(list, max) {
+  if (list.length <= max) return list;
+  const sorted = list.slice().sort((a, b) => (a.generatedAt || a.createdAt || 0) - (b.generatedAt || b.createdAt || 0));
+  while (sorted.length > max) {
     const idx = sorted.findIndex((s) => !s.favorite);
     if (idx === -1) break; // everything left is favorited — stop trimming
     sorted.splice(idx, 1);
@@ -72,7 +78,7 @@ async function getSentences(sKey) {
 
 async function addSentence(sKey, record) {
   const { sentenceCache = {} } = await chrome.storage.local.get("sentenceCache");
-  const list = trimSentenceList([...(sentenceCache[sKey] || []), record]);
+  const list = trimRecordList([...(sentenceCache[sKey] || []), record], MAX_SENTENCES_PER_WORD);
   sentenceCache[sKey] = list;
   await chrome.storage.local.set({ sentenceCache });
   return list;
@@ -86,6 +92,91 @@ async function toggleSentenceFavorite(sKey, id) {
   sentenceCache[sKey] = list;
   await chrome.storage.local.set({ sentenceCache });
   return list;
+}
+
+// --- Writing practice: user writes a sentence, Gemini polishes it, both are kept. ---
+
+async function getUserSentences(sKey) {
+  const { userSentenceCache = {} } = await chrome.storage.local.get("userSentenceCache");
+  return userSentenceCache[sKey] || [];
+}
+
+async function addUserSentence(sKey, record) {
+  const { userSentenceCache = {} } = await chrome.storage.local.get("userSentenceCache");
+  const list = trimRecordList([...(userSentenceCache[sKey] || []), record], MAX_USER_SENTENCES_PER_WORD);
+  userSentenceCache[sKey] = list;
+  await chrome.storage.local.set({ userSentenceCache });
+  return list;
+}
+
+async function toggleUserSentenceFavorite(sKey, id) {
+  const { userSentenceCache = {} } = await chrome.storage.local.get("userSentenceCache");
+  const list = userSentenceCache[sKey] || [];
+  const rec = list.find((s) => s.id === id);
+  if (rec) rec.favorite = !rec.favorite;
+  userSentenceCache[sKey] = list;
+  await chrome.storage.local.set({ userSentenceCache });
+  return list;
+}
+
+async function deleteUserSentence(sKey, id) {
+  const { userSentenceCache = {} } = await chrome.storage.local.get("userSentenceCache");
+  const list = (userSentenceCache[sKey] || []).filter((s) => s.id !== id);
+  userSentenceCache[sKey] = list;
+  await chrome.storage.local.set({ userSentenceCache });
+  return list;
+}
+
+async function polishSentence(targetEntry, userText) {
+  const { geminiApiKey, geminiModel } = await chrome.storage.local.get(["geminiApiKey", "geminiModel"]);
+  if (!geminiApiKey) {
+    throw new Error("No Gemini API key set. Add one in the extension popup under Sentence practice settings.");
+  }
+  const model = (geminiModel || DEFAULT_GEMINI_MODEL).trim();
+
+  const prompt = `You are a friendly, encouraging language-learning writing tutor.
+
+A learner tried to write a sentence using the word "${targetEntry.word}":
+"${userText}"
+
+Tasks:
+1. Write a corrected, natural-sounding version that fixes any grammar, spelling, or word-choice issues while preserving the learner's original meaning and intent as closely as possible. Keep the word "${targetEntry.word}" (or a natural grammatical form of it) in the sentence.
+2. List, in 1-3 short bullet points, the main things you changed and why — simple enough for a learner to understand (e.g. "changed 'goed' to 'went' — irregular past tense"). If nothing needed to change, return an empty list and say so isn't required, just leave it empty.
+
+Respond with ONLY valid JSON, no markdown code fences, no commentary, in exactly this shape:
+{"corrected": "...", "notes": ["...", "..."]}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+    model
+  )}:generateContent?key=${encodeURIComponent(geminiApiKey)}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.4 },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Gemini request failed (${res.status}): ${errText.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  const rawText = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+  const cleaned = rawText.replace(/```json|```/g, "").trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    parsed = { corrected: cleaned, notes: [] };
+  }
+  if (!parsed.corrected) throw new Error("Gemini response didn't include a corrected sentence.");
+
+  return { corrected: parsed.corrected, notes: Array.isArray(parsed.notes) ? parsed.notes : [] };
 }
 
 async function generateSentence(targetEntry, relatedWords) {
@@ -246,6 +337,81 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return;
       }
       const sentences = await toggleSentenceFavorite(sentenceKeyFor(targetEntry), message.id);
+      sendResponse({ ok: true, sentences });
+    })();
+    return true;
+  }
+
+  if (message.type === "POLISH_SENTENCE") {
+    (async () => {
+      try {
+        const text = (message.text || "").trim();
+        if (!text) {
+          sendResponse({ ok: false, error: "Write a sentence first." });
+          return;
+        }
+        const { library = [] } = await chrome.storage.local.get("library");
+        const targetEntry = library.find((e) => keyFor(e) === message.key);
+        if (!targetEntry) {
+          sendResponse({ ok: false, error: "Word not found in library." });
+          return;
+        }
+        const { corrected, notes } = await polishSentence(targetEntry, text);
+        const record = {
+          id: crypto.randomUUID(),
+          original: text,
+          corrected,
+          notes,
+          createdAt: Date.now(),
+          favorite: false,
+        };
+        const sentences = await addUserSentence(sentenceKeyFor(targetEntry), record);
+        sendResponse({ ok: true, record, sentences });
+      } catch (err) {
+        console.error(err);
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "GET_USER_SENTENCES") {
+    (async () => {
+      const { library = [] } = await chrome.storage.local.get("library");
+      const targetEntry = library.find((e) => keyFor(e) === message.key);
+      if (!targetEntry) {
+        sendResponse({ ok: true, sentences: [] });
+        return;
+      }
+      const sentences = await getUserSentences(sentenceKeyFor(targetEntry));
+      sendResponse({ ok: true, sentences });
+    })();
+    return true;
+  }
+
+  if (message.type === "TOGGLE_USER_SENTENCE_FAVORITE") {
+    (async () => {
+      const { library = [] } = await chrome.storage.local.get("library");
+      const targetEntry = library.find((e) => keyFor(e) === message.key);
+      if (!targetEntry) {
+        sendResponse({ ok: false, error: "Word not found in library." });
+        return;
+      }
+      const sentences = await toggleUserSentenceFavorite(sentenceKeyFor(targetEntry), message.id);
+      sendResponse({ ok: true, sentences });
+    })();
+    return true;
+  }
+
+  if (message.type === "DELETE_USER_SENTENCE") {
+    (async () => {
+      const { library = [] } = await chrome.storage.local.get("library");
+      const targetEntry = library.find((e) => keyFor(e) === message.key);
+      if (!targetEntry) {
+        sendResponse({ ok: false, error: "Word not found in library." });
+        return;
+      }
+      const sentences = await deleteUserSentence(sentenceKeyFor(targetEntry), message.id);
       sendResponse({ ok: true, sentences });
     })();
     return true;

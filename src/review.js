@@ -23,6 +23,17 @@ const favoriteBtn = document.getElementById("favoriteBtn");
 const historyToggle = document.getElementById("historyToggle");
 const historyListEl = document.getElementById("historyList");
 const sentenceErrorEl = document.getElementById("sentenceError");
+const practiceWordEl = document.getElementById("practiceWord");
+const practiceInput = document.getElementById("practiceInput");
+const practiceBtn = document.getElementById("practiceBtn");
+const practiceErrorEl = document.getElementById("practiceError");
+const practiceResultEl = document.getElementById("practiceResult");
+const practiceOriginalTextEl = document.getElementById("practiceOriginalText");
+const practiceCorrectedTextEl = document.getElementById("practiceCorrectedText");
+const practiceNotesEl = document.getElementById("practiceNotes");
+const practiceFavoriteBtn = document.getElementById("practiceFavoriteBtn");
+const practiceHistoryToggle = document.getElementById("practiceHistoryToggle");
+const practiceHistoryListEl = document.getElementById("practiceHistoryList");
 
 const LEVEL_LABEL = { 1: "Monthly", 2: "Every 2 weeks", 3: "Weekly", 4: "Every 3 days", 5: "Daily" };
 
@@ -33,6 +44,8 @@ let graded = new Map(); // key -> { remembered, level, interval } for cards grad
 let autoGenerateEnabled = false; // loaded from settings before the first card shows
 let sentenceRequestToken = 0;   // guards against a stale async response overwriting a newer card
 let lastSentenceList = [];      // sentences currently shown in the history panel
+let practiceRequestToken = 0;   // same staleness guard, for the writing-practice panel
+let lastUserSentenceList = [];  // writing-practice attempts currently shown in the history panel
 
 function keyFor(entry) {
   return `${entry.word}|${entry.savedAt}`;
@@ -85,12 +98,14 @@ function showCurrent() {
     cardEl.style.display = "none";
     controlsEl.style.display = "none";
     document.getElementById("sentencePanel").style.display = "none";
+    document.getElementById("practicePanel").style.display = "none";
     progressEl.textContent = "";
     emptyEl.style.display = "block";
     document.querySelector("#empty p").textContent = noResultsMessage();
     return;
   }
   document.getElementById("sentencePanel").style.display = "flex";
+  document.getElementById("practicePanel").style.display = "flex";
 
   const entry = current();
   const key = keyFor(entry);
@@ -131,6 +146,7 @@ function showCurrent() {
   progressEl.textContent = `${index + 1} of ${queue.length}`;
 
   showSentenceForCurrent();
+  showPracticeForCurrent();
 }
 
 // Renders one sentence record into the card (used for both the latest generation
@@ -263,6 +279,214 @@ historyToggle.addEventListener("click", () => {
   historyToggle.textContent = willShow
     ? `Hide past sentences (${lastSentenceList.length})`
     : `Past sentences (${lastSentenceList.length})`;
+});
+
+// --- Writing practice: user writes a sentence, Gemini polishes it, both are kept. ---
+
+// Simple word-level diff (LCS-based) so differences between the learner's original
+// and the AI-polished version can be highlighted for grammar/word-choice learning.
+function diffWords(a, b) {
+  const aw = a.split(/(\s+)/).filter((t) => t.length > 0);
+  const bw = b.split(/(\s+)/).filter((t) => t.length > 0);
+  const m = aw.length;
+  const n = bw.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      dp[i][j] = aw[i] === bw[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  let i = 0;
+  let j = 0;
+  const aParts = [];
+  const bParts = [];
+  while (i < m && j < n) {
+    if (aw[i] === bw[j]) {
+      aParts.push({ text: aw[i], type: "same" });
+      bParts.push({ text: bw[j], type: "same" });
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      aParts.push({ text: aw[i], type: "removed" });
+      i++;
+    } else {
+      bParts.push({ text: bw[j], type: "added" });
+      j++;
+    }
+  }
+  while (i < m) {
+    aParts.push({ text: aw[i], type: "removed" });
+    i++;
+  }
+  while (j < n) {
+    bParts.push({ text: bw[j], type: "added" });
+    j++;
+  }
+  return { aParts, bParts };
+}
+
+function renderDiffHtml(parts) {
+  return parts
+    .map((p) => {
+      const text = escapeHtml(p.text);
+      if (p.type === "removed") return `<span class="diff-removed">${text}</span>`;
+      if (p.type === "added") return `<span class="diff-added">${text}</span>`;
+      return text;
+    })
+    .join(" ");
+}
+
+function displayUserSentenceRecord(record) {
+  const { aParts, bParts } = diffWords(record.original, record.corrected);
+  practiceOriginalTextEl.innerHTML = renderDiffHtml(aParts);
+  practiceCorrectedTextEl.innerHTML = renderDiffHtml(bParts);
+  practiceNotesEl.innerHTML = "";
+  const notes = record.notes || [];
+  notes.forEach((n) => {
+    const li = document.createElement("li");
+    li.textContent = n;
+    practiceNotesEl.appendChild(li);
+  });
+  practiceNotesEl.style.display = notes.length ? "block" : "none";
+  practiceResultEl.dataset.sentenceId = record.id || "";
+  practiceFavoriteBtn.textContent = record.favorite ? "★" : "☆";
+  practiceFavoriteBtn.classList.toggle("favorited", !!record.favorite);
+  practiceResultEl.style.display = "flex";
+}
+
+function renderUserHistory(list) {
+  lastUserSentenceList = list;
+  if (list.length === 0) {
+    practiceHistoryToggle.style.display = "none";
+    practiceHistoryListEl.style.display = "none";
+    practiceHistoryListEl.innerHTML = "";
+    return;
+  }
+  practiceHistoryToggle.style.display = "inline";
+  practiceHistoryToggle.textContent = `Past attempts (${list.length})`;
+  practiceHistoryListEl.innerHTML = "";
+  list
+    .slice()
+    .reverse()
+    .forEach((rec) => {
+      const div = document.createElement("div");
+      div.className = "history-item";
+      const label = document.createElement("span");
+      label.innerHTML = `${rec.favorite ? '<span class="star">★</span> ' : ""}${escapeHtml(rec.original)}`;
+      const del = document.createElement("span");
+      del.className = "history-del";
+      del.textContent = "✕";
+      del.title = "Delete this attempt";
+      del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        deleteUserAttempt(rec.id);
+      });
+      div.appendChild(label);
+      div.appendChild(del);
+      div.addEventListener("click", () => displayUserSentenceRecord(rec));
+      practiceHistoryListEl.appendChild(div);
+    });
+}
+
+// Loads whatever writing-practice attempts are already saved for the current word.
+// Unlike the AI-example panel, this never auto-generates — polishing only happens
+// when the learner clicks the button after writing something.
+function showPracticeForCurrent() {
+  practiceRequestToken += 1;
+  const token = practiceRequestToken;
+
+  practiceInput.value = "";
+  practiceErrorEl.style.display = "none";
+  practiceErrorEl.textContent = "";
+  practiceResultEl.style.display = "none";
+  practiceHistoryToggle.style.display = "none";
+  practiceHistoryListEl.style.display = "none";
+  practiceHistoryListEl.innerHTML = "";
+  practiceBtn.disabled = false;
+  practiceBtn.classList.remove("loading");
+  practiceBtn.textContent = "✨ Polish with AI";
+
+  if (queue.length === 0) return;
+  const entry = current();
+  practiceWordEl.textContent = entry.word;
+  const key = keyFor(entry);
+
+  chrome.runtime.sendMessage({ type: "GET_USER_SENTENCES", key }, (res) => {
+    if (token !== practiceRequestToken) return; // moved to a different card meanwhile
+    const list = (res && res.ok && res.sentences) || [];
+    if (list.length > 0) {
+      displayUserSentenceRecord(list[list.length - 1]);
+      renderUserHistory(list);
+    }
+  });
+}
+
+practiceBtn.addEventListener("click", () => {
+  if (queue.length === 0) return;
+  const text = practiceInput.value.trim();
+  if (!text) {
+    practiceErrorEl.textContent = "Write a sentence first.";
+    practiceErrorEl.style.display = "block";
+    return;
+  }
+  const key = keyFor(current());
+  const token = practiceRequestToken;
+
+  practiceBtn.disabled = true;
+  practiceBtn.classList.add("loading");
+  practiceBtn.textContent = "Polishing…";
+  practiceErrorEl.style.display = "none";
+
+  chrome.runtime.sendMessage({ type: "POLISH_SENTENCE", key, text }, (res) => {
+    if (token !== practiceRequestToken) return; // moved to a different card meanwhile
+    practiceBtn.disabled = false;
+    practiceBtn.classList.remove("loading");
+    practiceBtn.textContent = "✨ Polish with AI";
+    if (!res || !res.ok) {
+      practiceErrorEl.textContent = (res && res.error) || "Something went wrong polishing the sentence.";
+      practiceErrorEl.style.display = "block";
+      return;
+    }
+    practiceInput.value = "";
+    displayUserSentenceRecord(res.record);
+    renderUserHistory(res.sentences);
+  });
+});
+
+practiceFavoriteBtn.addEventListener("click", () => {
+  const id = practiceResultEl.dataset.sentenceId;
+  if (!id || queue.length === 0) return;
+  const key = keyFor(current());
+  chrome.runtime.sendMessage({ type: "TOGGLE_USER_SENTENCE_FAVORITE", key, id }, (res) => {
+    if (!res || !res.ok) return;
+    const rec = res.sentences.find((s) => s.id === id);
+    if (rec) displayUserSentenceRecord(rec);
+    renderUserHistory(res.sentences);
+  });
+});
+
+function deleteUserAttempt(id) {
+  if (queue.length === 0) return;
+  const key = keyFor(current());
+  chrome.runtime.sendMessage({ type: "DELETE_USER_SENTENCE", key, id }, (res) => {
+    if (!res || !res.ok) return;
+    renderUserHistory(res.sentences);
+    if (practiceResultEl.dataset.sentenceId === id) {
+      if (res.sentences.length > 0) {
+        displayUserSentenceRecord(res.sentences[res.sentences.length - 1]);
+      } else {
+        practiceResultEl.style.display = "none";
+      }
+    }
+  });
+}
+
+practiceHistoryToggle.addEventListener("click", () => {
+  const willShow = practiceHistoryListEl.style.display !== "block";
+  practiceHistoryListEl.style.display = willShow ? "flex" : "none";
+  practiceHistoryToggle.textContent = willShow
+    ? `Hide past attempts (${lastUserSentenceList.length})`
+    : `Past attempts (${lastUserSentenceList.length})`;
 });
 
 cardEl.addEventListener("click", () => {

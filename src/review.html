@@ -232,6 +232,13 @@
       flex-direction: column;
       gap: 5px;
     }
+    #sentenceError {
+      display: none;
+      font-size: 12px;
+      color: #e74c3c;
+      max-width: 380px;
+      text-align: center;
+    }
     .history-item {
       background: #1f2430;
       border-radius: 8px;
@@ -241,6 +248,10 @@
       cursor: pointer;
       text-align: left;
       line-height: 1.4;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
     }
     .history-item:hover {
       background: #2a2f3a;
@@ -248,12 +259,157 @@
     .history-item .star {
       color: #ffcc4d;
     }
-    #sentenceError {
+    .history-del {
+      flex-shrink: 0;
+      color: #666;
+      padding: 0 2px;
+    }
+    .history-del:hover {
+      color: #e74c3c;
+    }
+    #practicePanel {
+      width: 420px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid #262b36;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    #practiceIntro {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+    }
+    #practiceInput {
+      width: 100%;
+      box-sizing: border-box;
+      background: #1f2430;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #eee;
+      font-size: 13px;
+      padding: 8px 10px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    #practiceBtn {
+      background: #2a2f3a;
+      color: #eee;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      min-width: 160px;
+    }
+    #practiceBtn:hover {
+      background: #3a4050;
+    }
+    #practiceBtn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    #practiceBtn.loading::after {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-left: 8px;
+      border-radius: 50%;
+      background: #eee;
+      animation: wc-pulse 1s ease-in-out infinite;
+      vertical-align: middle;
+    }
+    #practiceError {
       display: none;
       font-size: 12px;
       color: #e74c3c;
-      max-width: 380px;
       text-align: center;
+    }
+    #practiceResult {
+      display: none;
+      width: 100%;
+      box-sizing: border-box;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .practice-box {
+      background: #1f2430;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .practice-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #777;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .diff-removed {
+      text-decoration: line-through;
+      color: #e77;
+      background: rgba(231, 119, 119, 0.15);
+      border-radius: 3px;
+      padding: 0 2px;
+    }
+    .diff-added {
+      color: #7ee787;
+      background: rgba(126, 231, 135, 0.15);
+      border-radius: 3px;
+      padding: 0 2px;
+      font-weight: 600;
+    }
+    #practiceFavoriteBtn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: #666;
+      padding: 0;
+      line-height: 1;
+    }
+    #practiceFavoriteBtn:hover {
+      color: #ffcc4d;
+    }
+    #practiceFavoriteBtn.favorited {
+      color: #ffcc4d;
+    }
+    #practiceNotes {
+      display: none;
+      margin: 0;
+      padding-left: 18px;
+      font-size: 12px;
+      color: #aaa;
+      line-height: 1.6;
+    }
+    #practiceHistoryToggle {
+      display: none;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 11px;
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 0;
+    }
+    #practiceHistoryToggle:hover {
+      color: #aaa;
+    }
+    #practiceHistoryList {
+      display: none;
+      width: 100%;
+      max-height: 150px;
+      overflow-y: auto;
+      box-sizing: border-box;
+      flex-direction: column;
+      gap: 5px;
     }
     #controls {
       display: none;
@@ -342,6 +498,28 @@
     <button id="historyToggle"></button>
     <div id="historyList"></div>
     <div id="sentenceError"></div>
+  </div>
+  <div id="practicePanel">
+    <div id="practiceIntro">📝 Try writing your own sentence with "<span id="practiceWord"></span>"</div>
+    <textarea id="practiceInput" rows="2" placeholder="Type a sentence using the word…"></textarea>
+    <button id="practiceBtn">✨ Polish with AI</button>
+    <div id="practiceError"></div>
+    <div id="practiceResult">
+      <div class="practice-box">
+        <div class="practice-label"><span>Your sentence</span></div>
+        <div id="practiceOriginalText"></div>
+      </div>
+      <div class="practice-box">
+        <div class="practice-label">
+          <span>Polished by AI</span>
+          <button id="practiceFavoriteBtn" title="Save as favorite">☆</button>
+        </div>
+        <div id="practiceCorrectedText"></div>
+      </div>
+      <ul id="practiceNotes"></ul>
+    </div>
+    <button id="practiceHistoryToggle"></button>
+    <div id="practiceHistoryList"></div>
   </div>
   <div id="controls">
     <div id="navRow">

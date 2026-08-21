@@ -7,6 +7,7 @@ const geminiModelEl = document.getElementById("geminiModel");
 const autoGenerateEl = document.getElementById("autoGenerateSentence");
 
 const MAX_SENTENCES_PER_WORD = 8; // keep in sync with background.js
+const MAX_USER_SENTENCES_PER_WORD = 8; // writing-practice attempts, keep in sync with background.js
 
 let library = [];
 
@@ -103,9 +104,14 @@ function render(filter = "") {
       // Only drop cached sentences if no other saved entry still shares this
       // word+translation identity (e.g. a duplicate re-save of the same word).
       if (removedEntry && !library.some((e) => entryKey(e) === entryKey(removedEntry))) {
-        const { sentenceCache = {} } = await chrome.storage.local.get("sentenceCache");
+        const { sentenceCache = {}, userSentenceCache = {} } = await chrome.storage.local.get([
+          "sentenceCache",
+          "userSentenceCache",
+        ]);
         delete sentenceCache[entryKey(removedEntry)];
+        delete userSentenceCache[entryKey(removedEntry)];
         updates.sentenceCache = sentenceCache;
+        updates.userSentenceCache = userSentenceCache;
       }
 
       await chrome.storage.local.set(updates);
@@ -134,7 +140,7 @@ targetLangEl.addEventListener("change", () => {
 document.getElementById("clearAll").addEventListener("click", async () => {
   if (confirm("Delete all saved words? This cannot be undone.")) {
     library = [];
-    await chrome.storage.local.set({ library, sentenceCache: {} });
+    await chrome.storage.local.set({ library, sentenceCache: {}, userSentenceCache: {} });
     render();
     renderReviewBanner();
   }
@@ -175,13 +181,17 @@ function entryKey(e) {
 }
 
 document.getElementById("exportJson").addEventListener("click", async () => {
-  const { sentenceCache = {} } = await chrome.storage.local.get("sentenceCache");
+  const { sentenceCache = {}, userSentenceCache = {} } = await chrome.storage.local.get([
+    "sentenceCache",
+    "userSentenceCache",
+  ]);
   const payload = {
     exportedAt: new Date().toISOString(),
-    source: "Word Catcher",
-    version: 2,
+    source: "Vokari",
+    version: 3,
     library,
     sentenceCache,
+    userSentenceCache,
   };
   downloadFile(JSON.stringify(payload, null, 2), "vocabulary_sync.json", "application/json");
 });
@@ -197,13 +207,19 @@ document.getElementById("importJsonFile").addEventListener("change", async (e) =
 
   let incoming;
   let incomingSentences = {};
+  let incomingUserSentences = {};
   try {
     const text = await file.text();
     const parsed = JSON.parse(text);
     incoming = Array.isArray(parsed) ? parsed : parsed.library;
     if (!Array.isArray(incoming)) throw new Error("No word list found in file");
-    if (!Array.isArray(parsed) && parsed.sentenceCache && typeof parsed.sentenceCache === "object") {
-      incomingSentences = parsed.sentenceCache;
+    if (!Array.isArray(parsed)) {
+      if (parsed.sentenceCache && typeof parsed.sentenceCache === "object") {
+        incomingSentences = parsed.sentenceCache;
+      }
+      if (parsed.userSentenceCache && typeof parsed.userSentenceCache === "object") {
+        incomingUserSentences = parsed.userSentenceCache;
+      }
     }
   } catch (err) {
     showImportStatus(`Import failed: ${err.message}`, true);
@@ -239,25 +255,39 @@ document.getElementById("importJsonFile").addEventListener("change", async (e) =
   }
 
   library = Array.from(existingByKey.values());
-  const { sentenceCache: currentSentences = {} } = await chrome.storage.local.get("sentenceCache");
-  const mergedSentences = mergeSentenceCaches(currentSentences, incomingSentences);
+  const { sentenceCache: currentSentences = {}, userSentenceCache: currentUserSentences = {} } =
+    await chrome.storage.local.get(["sentenceCache", "userSentenceCache"]);
+  const mergedSentences = mergeSentenceCaches(currentSentences, incomingSentences, MAX_SENTENCES_PER_WORD);
+  const mergedUserSentences = mergeSentenceCaches(
+    currentUserSentences,
+    incomingUserSentences,
+    MAX_USER_SENTENCES_PER_WORD
+  );
 
-  await chrome.storage.local.set({ library, sentenceCache: mergedSentences });
+  await chrome.storage.local.set({
+    library,
+    sentenceCache: mergedSentences,
+    userSentenceCache: mergedUserSentences,
+  });
   render(searchEl.value);
   renderReviewBanner();
 
-  const sentenceNote = Object.keys(incomingSentences).length
-    ? " Example sentences from the file were merged in too (favorites kept on either side)."
+  const mergedExtras = [];
+  if (Object.keys(incomingSentences).length) mergedExtras.push("example sentences");
+  if (Object.keys(incomingUserSentences).length) mergedExtras.push("writing-practice attempts");
+  const sentenceNote = mergedExtras.length
+    ? ` ${mergedExtras.join(" and ")} from the file were merged in too (favorites kept on either side).`
     : "";
   showImportStatus(
     `Imported ${incoming.length} word${incoming.length === 1 ? "" : "s"}: ${added} new, ${updated} updated, ${unchanged} already up to date.${sentenceNote}`
   );
 });
 
-// Merges two word -> sentence-history maps. Sentences are matched by their id,
-// so the same generation imported twice never duplicates; if the two sides
-// disagree on favorite status for the same sentence, favorited wins.
-function mergeSentenceCaches(a, b) {
+// Merges two word -> record-history maps (used for both AI-example sentences and
+// writing-practice attempts). Records are matched by their id, so the same entry
+// imported twice never duplicates; if the two sides disagree on favorite status
+// for the same record, favorited wins.
+function mergeSentenceCaches(a, b, max) {
   const merged = { ...a };
   for (const [key, incomingList] of Object.entries(b)) {
     if (!Array.isArray(incomingList)) continue;
@@ -272,15 +302,17 @@ function mergeSentenceCaches(a, b) {
         byId.set(s.id, { ...existing, favorite: true });
       }
     });
-    merged[key] = trimSentenceList(Array.from(byId.values()));
+    merged[key] = trimRecordList(Array.from(byId.values()), max);
   }
   return merged;
 }
 
-function trimSentenceList(list) {
-  if (list.length <= MAX_SENTENCES_PER_WORD) return list;
-  const sorted = list.slice().sort((a, b) => (a.generatedAt || 0) - (b.generatedAt || 0));
-  while (sorted.length > MAX_SENTENCES_PER_WORD) {
+// Generic trimmer, mirrors background.js's trimRecordList. Works for both AI-example
+// records (timestamped with generatedAt) and writing-practice records (createdAt).
+function trimRecordList(list, max) {
+  if (list.length <= max) return list;
+  const sorted = list.slice().sort((a, b) => (a.generatedAt || a.createdAt || 0) - (b.generatedAt || b.createdAt || 0));
+  while (sorted.length > max) {
     const idx = sorted.findIndex((s) => !s.favorite);
     if (idx === -1) break; // everything left is favorited — stop trimming
     sorted.splice(idx, 1);

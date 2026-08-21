@@ -1,4 +1,4 @@
-# Word Catcher — Translate & Save
+# Vokari — Translate & Save
 
 Highlight any word/phrase on a webpage → see a translation popup → click Save → it goes into your personal vocabulary library, viewable/searchable/exportable from the toolbar icon.
 
@@ -84,6 +84,17 @@ On the review card, a **✨ Make a sentence** button generates one example sente
 - If no API key is set, or a request fails (bad key, rate limit, network issue), the button shows an inline error instead of breaking the review flow.
 - **Syncing across PCs**: the sentence history (including favorites) is included automatically in the **Export (Sync)** / **Import (Sync)** files in the popup footer, alongside your word library — no separate export needed. Import merges by sentence, so re-importing an older file never loses sentences or favorites added elsewhere.
 
+## Writing practice (Gemini API)
+
+Below the example-sentence panel, a second panel lets you write your **own** sentence with the word, then has Gemini polish it — correcting grammar, spelling, and word choice while keeping your original meaning. Both versions are kept side by side so you can see exactly what changed, which is where a lot of the actual grammar learning happens.
+
+- **How to use it**: type a sentence using the current card's word into the text box and click **✨ Polish with AI**. Your original and the polished version appear stacked, with word-level differences highlighted — ~~struck-through red~~ for what was removed/changed from your version, and **green** for what Gemini added or changed it to. A short bulleted explanation (e.g. "changed 'goed' to 'went' — irregular past tense") appears underneath when Gemini made a correction worth explaining.
+- **Uses the same Gemini setup** as the example-sentence feature — same API key and model field in the popup's settings panel, no separate configuration needed.
+- **Always on demand**: unlike example sentences, writing-practice never auto-generates (there's nothing to auto-generate until you've written something) — it only calls the API when you click **✨ Polish with AI**.
+- **Persistent history + favorites**: every attempt is saved (up to 8 per word, oldest non-favorited one dropped first) via `chrome.storage.local`, so past attempts are still there next time you review that word. Click the ☆ star next to "Polished by AI" to favorite the version currently shown; favorited attempts are never auto-trimmed. A **Past attempts (N)** link expands a list of everything you've written for that word — click any entry to bring it back into the comparison view, or click the ✕ next to an entry to delete it permanently.
+- **Independent from example sentences**: this is a completely separate feature/history from the ✨ example-sentence generator above — writing your own sentences doesn't affect or get affected by the AI-generated examples, and vice versa.
+- **Syncing across PCs**: writing-practice history (including favorites) is included automatically in **Export (Sync)** / **Import (Sync)**, right alongside your word library and example-sentence history.
+
 ## Popup collision with other extensions (e.g. Google Translate's own popup)
 
 If you also use the Google Translate browser extension, its own select-to-translate popup and this extension's popup can compete for the same spot below your selection. To handle this, the extension now:
@@ -97,7 +108,7 @@ This is a general fix (not hardcoded to Google Translate specifically), so it sh
 
 The extension stays fully local — nothing leaves your machine automatically. To keep two or more PCs' word lists in sync, use the two new buttons in the popup footer:
 
-- **Export (Sync)** — downloads a `vocabulary_sync.json` file containing every field, including review progress (level, due date, review count) and saved example sentences/favorites. This is different from the CSV/Anki exports above, which are one-way and don't round-trip.
+- **Export (Sync)** — downloads a `vocabulary_sync.json` file containing every field, including review progress (level, due date, review count), saved example sentences/favorites, and writing-practice attempts/favorites. This is different from the CSV/Anki exports above, which are one-way and don't round-trip.
 - **Import (Sync)** — pick a previously exported `.json` file and it **merges** into your current library:
   - Words that don't exist yet are added.
   - Words that exist on both sides keep whichever copy is further along (lower level = more familiar, wins ties by review count) — so importing an older file can never undo reviews you've already done elsewhere.
@@ -115,4 +126,5 @@ It's a manual two-click sync rather than automatic/real-time, but it keeps the e
 ## Possible next steps
 
 - Automate the sync-folder workflow above with a Chrome alarm that periodically writes an export to a fixed path (would need the `downloads` permission's overwrite behavior, or File System Access API where supported).
-- Cache generated sentences persistently (not just per session) so you can revisit a favorite example later, or let Gemini vary difficulty based on the word's current level.
+- Let Gemini vary example-sentence difficulty based on the word's current review level (simpler sentences for level 4-5 struggling words, more complex ones for level 1-2 well-known words).
+- Add a lightweight "grammar patterns" view that aggregates the notes across all your writing-practice attempts, to surface recurring mistakes (e.g. "you often mix up past tense of irregular verbs") rather than reviewing them one attempt at a time.
