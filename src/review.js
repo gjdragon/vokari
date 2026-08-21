@@ -18,6 +18,10 @@ const scopeEl = document.getElementById("scope");
 const amountEl = document.getElementById("amount");
 const sentenceBtn = document.getElementById("sentenceBtn");
 const sentenceBox = document.getElementById("sentenceBox");
+const sentenceTextEl = document.getElementById("sentenceText");
+const favoriteBtn = document.getElementById("favoriteBtn");
+const historyToggle = document.getElementById("historyToggle");
+const historyListEl = document.getElementById("historyList");
 const sentenceErrorEl = document.getElementById("sentenceError");
 
 const LEVEL_LABEL = { 1: "Monthly", 2: "Every 2 weeks", 3: "Weekly", 4: "Every 3 days", 5: "Daily" };
@@ -26,7 +30,9 @@ let queue = [];       // fixed list for this session — Prev/Next just move the
 let index = 0;
 let revealed = false;
 let graded = new Map(); // key -> { remembered, level, interval } for cards graded this session
-let sentences = new Map(); // key -> { sentence, wordsUsed } generated this session (on-demand, not persisted)
+let autoGenerateEnabled = false; // loaded from settings before the first card shows
+let sentenceRequestToken = 0;   // guards against a stale async response overwriting a newer card
+let lastSentenceList = [];      // sentences currently shown in the history panel
 
 function keyFor(entry) {
   return `${entry.word}|${entry.savedAt}`;
@@ -53,10 +59,14 @@ scopeEl.addEventListener("change", () => {
 
 document.getElementById("startBtn").addEventListener("click", loadQueue);
 
+async function loadSettings() {
+  const { autoGenerateSentence } = await chrome.storage.local.get("autoGenerateSentence");
+  autoGenerateEnabled = !!autoGenerateSentence;
+}
+
 async function loadQueue() {
   lastResultEl.textContent = "";
   graded = new Map();
-  sentences = new Map();
   index = 0;
   const scope = scopeEl.value;
   const amount = Math.max(1, parseInt(amountEl.value, 10) || 1);
@@ -123,16 +133,45 @@ function showCurrent() {
   showSentenceForCurrent();
 }
 
-function renderSentence(entry, result) {
-  const words = [entry.word, ...(result.wordsUsed || [])].filter(Boolean);
-  let html = escapeHtml(result.sentence);
+// Renders one sentence record into the card (used for both the latest generation
+// and for clicking an older entry from the history list).
+function displaySentenceRecord(record) {
+  const entry = current();
+  const words = [entry.word, ...(record.wordsUsed || [])].filter(Boolean);
+  let html = escapeHtml(record.sentence);
   // Bold each used word (case-insensitive, whole-word match) for quick scanning.
   words.forEach((w) => {
     const re = new RegExp(`\\b(${escapeRegExp(w)})\\b`, "gi");
     html = html.replace(re, "<mark>$1</mark>");
   });
-  sentenceBox.innerHTML = html;
+  sentenceTextEl.innerHTML = html;
+  sentenceBox.dataset.sentenceId = record.id || "";
+  favoriteBtn.textContent = record.favorite ? "★" : "☆";
+  favoriteBtn.classList.toggle("favorited", !!record.favorite);
   sentenceBox.style.display = "block";
+}
+
+function renderHistory(list) {
+  lastSentenceList = list;
+  if (list.length <= 1) {
+    historyToggle.style.display = "none";
+    historyListEl.style.display = "none";
+    historyListEl.innerHTML = "";
+    return;
+  }
+  historyToggle.style.display = "inline";
+  historyToggle.textContent = `Past sentences (${list.length})`;
+  historyListEl.innerHTML = "";
+  list
+    .slice()
+    .reverse()
+    .forEach((rec) => {
+      const div = document.createElement("div");
+      div.className = "history-item";
+      div.innerHTML = `${rec.favorite ? '<span class="star">★</span> ' : ""}${escapeHtml(rec.sentence)}`;
+      div.addEventListener("click", () => displaySentenceRecord(rec));
+      historyListEl.appendChild(div);
+    });
 }
 
 function escapeHtml(str) {
@@ -145,47 +184,85 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Loads whatever sentences are already saved for the current word. If none exist
+// yet and auto-generate is on, kicks off a generation automatically.
 function showSentenceForCurrent() {
+  sentenceRequestToken += 1;
+  const token = sentenceRequestToken;
+
   sentenceErrorEl.style.display = "none";
   sentenceErrorEl.textContent = "";
   sentenceBox.style.display = "none";
-  sentenceBox.innerHTML = "";
+  historyToggle.style.display = "none";
+  historyListEl.style.display = "none";
+  historyListEl.innerHTML = "";
   sentenceBtn.disabled = false;
+  sentenceBtn.classList.remove("loading");
+  sentenceBtn.textContent = "✨ Make a sentence";
 
   if (queue.length === 0) return;
   const entry = current();
   const key = keyFor(entry);
-  const cached = sentences.get(key);
-  if (cached) {
-    sentenceBtn.textContent = "✨ Make another sentence";
-    renderSentence(entry, cached);
-  } else {
-    sentenceBtn.textContent = "✨ Make a sentence";
-  }
+
+  chrome.runtime.sendMessage({ type: "GET_SENTENCES", key }, (res) => {
+    if (token !== sentenceRequestToken) return; // moved to a different card meanwhile
+    const list = (res && res.ok && res.sentences) || [];
+    if (list.length > 0) {
+      sentenceBtn.textContent = "✨ Make another sentence";
+      displaySentenceRecord(list[list.length - 1]);
+      renderHistory(list);
+    } else if (autoGenerateEnabled) {
+      requestSentence(key, token);
+    }
+  });
 }
 
-sentenceBtn.addEventListener("click", () => {
-  if (queue.length === 0) return;
-  const entry = current();
-  const key = keyFor(entry);
-
+function requestSentence(key, token) {
   sentenceBtn.disabled = true;
+  sentenceBtn.classList.add("loading");
   sentenceBtn.textContent = "Generating…";
   sentenceErrorEl.style.display = "none";
-  sentenceBox.style.display = "none";
 
   chrome.runtime.sendMessage({ type: "GENERATE_SENTENCE", key }, (res) => {
+    if (token !== sentenceRequestToken) return; // moved to a different card meanwhile
     sentenceBtn.disabled = false;
+    sentenceBtn.classList.remove("loading");
     if (!res || !res.ok) {
-      sentenceBtn.textContent = sentences.has(key) ? "✨ Make another sentence" : "✨ Make a sentence";
+      sentenceBtn.textContent = "✨ Make a sentence";
       sentenceErrorEl.textContent = (res && res.error) || "Something went wrong generating the sentence.";
       sentenceErrorEl.style.display = "block";
       return;
     }
-    sentences.set(key, { sentence: res.sentence, wordsUsed: res.wordsUsed });
     sentenceBtn.textContent = "✨ Make another sentence";
-    renderSentence(entry, { sentence: res.sentence, wordsUsed: res.wordsUsed });
+    displaySentenceRecord(res.record);
+    renderHistory(res.sentences);
   });
+}
+
+sentenceBtn.addEventListener("click", () => {
+  if (queue.length === 0) return;
+  const key = keyFor(current());
+  requestSentence(key, sentenceRequestToken);
+});
+
+favoriteBtn.addEventListener("click", () => {
+  const id = sentenceBox.dataset.sentenceId;
+  if (!id || queue.length === 0) return;
+  const key = keyFor(current());
+  chrome.runtime.sendMessage({ type: "TOGGLE_SENTENCE_FAVORITE", key, id }, (res) => {
+    if (!res || !res.ok) return;
+    const rec = res.sentences.find((s) => s.id === id);
+    if (rec) displaySentenceRecord(rec);
+    renderHistory(res.sentences);
+  });
+});
+
+historyToggle.addEventListener("click", () => {
+  const willShow = historyListEl.style.display !== "block";
+  historyListEl.style.display = willShow ? "flex" : "none";
+  historyToggle.textContent = willShow
+    ? `Hide past sentences (${lastSentenceList.length})`
+    : `Past sentences (${lastSentenceList.length})`;
 });
 
 cardEl.addEventListener("click", () => {
@@ -243,4 +320,4 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowRight") goNext();
 });
 
-loadQueue();
+loadSettings().then(loadQueue);

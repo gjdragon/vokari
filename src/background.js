@@ -44,6 +44,50 @@ function pickRelatedWords(library, targetEntry, count) {
   return candidates.slice(0, count);
 }
 
+// Sentences are cached persistently (not just per session), keyed by word+translation
+// identity rather than savedAt — that stays stable across sync imports where the same
+// word might have a different savedAt on two PCs. Each word keeps up to MAX_SENTENCES_
+// PER_WORD generations; when trimming, favorited ones are never dropped automatically.
+const MAX_SENTENCES_PER_WORD = 8;
+
+function sentenceKeyFor(entry) {
+  return `${entry.word.toLowerCase()}|${entry.translation}`;
+}
+
+function trimSentenceList(list) {
+  if (list.length <= MAX_SENTENCES_PER_WORD) return list;
+  const sorted = list.slice().sort((a, b) => (a.generatedAt || 0) - (b.generatedAt || 0));
+  while (sorted.length > MAX_SENTENCES_PER_WORD) {
+    const idx = sorted.findIndex((s) => !s.favorite);
+    if (idx === -1) break; // everything left is favorited — stop trimming
+    sorted.splice(idx, 1);
+  }
+  return sorted;
+}
+
+async function getSentences(sKey) {
+  const { sentenceCache = {} } = await chrome.storage.local.get("sentenceCache");
+  return sentenceCache[sKey] || [];
+}
+
+async function addSentence(sKey, record) {
+  const { sentenceCache = {} } = await chrome.storage.local.get("sentenceCache");
+  const list = trimSentenceList([...(sentenceCache[sKey] || []), record]);
+  sentenceCache[sKey] = list;
+  await chrome.storage.local.set({ sentenceCache });
+  return list;
+}
+
+async function toggleSentenceFavorite(sKey, id) {
+  const { sentenceCache = {} } = await chrome.storage.local.get("sentenceCache");
+  const list = sentenceCache[sKey] || [];
+  const rec = list.find((s) => s.id === id);
+  if (rec) rec.favorite = !rec.favorite;
+  sentenceCache[sKey] = list;
+  await chrome.storage.local.set({ sentenceCache });
+  return list;
+}
+
 async function generateSentence(targetEntry, relatedWords) {
   const { geminiApiKey, geminiModel } = await chrome.storage.local.get(["geminiApiKey", "geminiModel"]);
   if (!geminiApiKey) {
@@ -162,11 +206,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         const related = pickRelatedWords(library, targetEntry, 2);
         const { sentence, wordsUsed } = await generateSentence(targetEntry, related);
-        sendResponse({ ok: true, sentence, wordsUsed, offeredWords: related.map((w) => w.word) });
+        const record = {
+          id: crypto.randomUUID(),
+          sentence,
+          wordsUsed,
+          generatedAt: Date.now(),
+          favorite: false,
+        };
+        const sentences = await addSentence(sentenceKeyFor(targetEntry), record);
+        sendResponse({ ok: true, record, sentences });
       } catch (err) {
         console.error(err);
         sendResponse({ ok: false, error: err.message });
       }
+    })();
+    return true;
+  }
+
+  if (message.type === "GET_SENTENCES") {
+    (async () => {
+      const { library = [] } = await chrome.storage.local.get("library");
+      const targetEntry = library.find((e) => keyFor(e) === message.key);
+      if (!targetEntry) {
+        sendResponse({ ok: true, sentences: [] });
+        return;
+      }
+      const sentences = await getSentences(sentenceKeyFor(targetEntry));
+      sendResponse({ ok: true, sentences });
+    })();
+    return true;
+  }
+
+  if (message.type === "TOGGLE_SENTENCE_FAVORITE") {
+    (async () => {
+      const { library = [] } = await chrome.storage.local.get("library");
+      const targetEntry = library.find((e) => keyFor(e) === message.key);
+      if (!targetEntry) {
+        sendResponse({ ok: false, error: "Word not found in library." });
+        return;
+      }
+      const sentences = await toggleSentenceFavorite(sentenceKeyFor(targetEntry), message.id);
+      sendResponse({ ok: true, sentences });
     })();
     return true;
   }

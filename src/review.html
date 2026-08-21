@@ -149,6 +149,7 @@
       padding: 8px 14px;
       font-size: 12px;
       cursor: pointer;
+      min-width: 190px;
     }
     #sentenceBtn:hover {
       background: #3a4050;
@@ -157,21 +158,95 @@
       opacity: 0.5;
       cursor: default;
     }
+    #sentenceBtn.loading::after {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-left: 8px;
+      border-radius: 50%;
+      background: #eee;
+      animation: wc-pulse 1s ease-in-out infinite;
+      vertical-align: middle;
+    }
+    @keyframes wc-pulse {
+      0%, 100% { opacity: 0.25; }
+      50% { opacity: 1; }
+    }
     #sentenceBox {
       display: none;
+      position: relative;
       width: 100%;
       box-sizing: border-box;
       background: #1f2430;
       border-radius: 10px;
-      padding: 14px 16px;
+      padding: 14px 40px;
       font-size: 15px;
       line-height: 1.5;
       text-align: center;
     }
     #sentenceBox mark {
+      background: rgba(76, 141, 255, 0.18);
+      color: #eee;
+      border-radius: 4px;
+      padding: 0 3px;
+      font-weight: 600;
+    }
+    #favoriteBtn {
+      position: absolute;
+      top: 8px;
+      right: 10px;
       background: none;
-      color: #4c8dff;
-      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: #666;
+      padding: 2px;
+      line-height: 1;
+    }
+    #favoriteBtn:hover {
+      color: #ffcc4d;
+    }
+    #favoriteBtn.favorited {
+      color: #ffcc4d;
+    }
+    #historyToggle {
+      display: none;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 11px;
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 0;
+    }
+    #historyToggle:hover {
+      color: #aaa;
+    }
+    #historyList {
+      display: none;
+      width: 100%;
+      max-height: 150px;
+      overflow-y: auto;
+      box-sizing: border-box;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .history-item {
+      background: #1f2430;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12px;
+      color: #bbb;
+      cursor: pointer;
+      text-align: left;
+      line-height: 1.4;
+    }
+    .history-item:hover {
+      background: #2a2f3a;
+    }
+    .history-item .star {
+      color: #ffcc4d;
     }
     #sentenceError {
       display: none;
@@ -260,7 +335,12 @@
   </div>
   <div id="sentencePanel">
     <button id="sentenceBtn">✨ Make a sentence</button>
-    <div id="sentenceBox"></div>
+    <div id="sentenceBox">
+      <button id="favoriteBtn" title="Save as favorite">☆</button>
+      <div id="sentenceText"></div>
+    </div>
+    <button id="historyToggle"></button>
+    <div id="historyList"></div>
     <div id="sentenceError"></div>
   </div>
   <div id="controls">

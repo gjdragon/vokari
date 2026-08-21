@@ -73,12 +73,16 @@ If you ever want higher-fidelity, human-recorded audio, that's a separate future
 
 On the review card, a **✨ Make a sentence** button generates one example sentence built around the word you're studying, using Gemini. It's meant as a memorization aid: seeing a word used in context sticks better than the bare word/translation pair.
 
-- **Setup**: open the toolbar popup → **✨ Sentence practice settings (Gemini API)** → paste in your own Gemini API key (get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)). Optionally set a specific model name (defaults to `gemini-3.6-flash`). The key is stored locally via `chrome.storage.local` and only ever sent to Google's Gemini endpoint when you click the button — never anywhere else.
+- **Setup**: open the toolbar popup → **✨ Sentence practice settings (Gemini API)** → paste in your own Gemini API key (get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)). Optionally set a specific model name (defaults to `gemini-3.6-flash`). The key is stored locally via `chrome.storage.local` and only ever sent to Google's Gemini endpoint when a sentence is generated — never anywhere else.
 - **If you get a 404 "model no longer available" error**: Google retires/renames Flash model IDs periodically. Type the current model name (check [ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models) or the error message itself, which usually names the replacement) into the Model field in settings — no code changes needed.
 - **How it picks words**: each sentence targets the current card's word and tries to weave in 2 more randomly-picked words from your saved library, so review doubles as light spaced repetition across words, not just one at a time. Gemini is told it's fine to use ordinary common words to keep the sentence natural, and to drop any of the 2 extra words if including them would force something awkward.
-- **On demand**: sentences are generated only when you click the button (not automatically for every card), and each generation calls the API fresh — click **✨ Make another sentence** for a different one. Generated sentences aren't saved; they're only kept for the current review session so you get variety next time you review the same word.
-- The words actually used in the sentence are bolded so they're easy to spot at a glance.
-- If no API key is set, or the request fails (bad key, rate limit, network issue), the button shows an inline error instead of breaking the review flow.
+- **Persistent history, not just this session**: every sentence you generate for a word is saved (up to 8 per word — the oldest non-favorited one is dropped first once you're over the cap) via `chrome.storage.local`, so they're still there the next time you open the review page, even after closing the tab or restarting Chrome. Click **✨ Make another sentence** to add a fresh one to that word's history rather than replacing it.
+- **Favorites**: click the ☆ star in the top-right of the sentence box to mark the one currently shown as a favorite (★). Favorited sentences are never auto-trimmed from the history, and when merging libraries via Import (Sync), a favorite on either side wins.
+- **Revisit past sentences**: once a word has more than one generation saved, a **Past sentences (N)** link appears under the sentence box — click it to expand a short list of everything generated for that word so far (favorites marked with ★); clicking any entry shows it in the card again.
+- **Auto-generate toggle**: in the same settings panel, **"Auto-generate a sentence when opening each review card"** controls whether a sentence is generated automatically the first time you land on a card with no saved sentence yet (costs one API call and a couple seconds of wait per new card), or only when you click the button yourself (off by default — keeps review fast, and you only pay the wait for words you actually want a sentence for). Either way, once a sentence exists for a word it's shown instantly from the saved history — no regeneration needed.
+- The words actually used in the sentence are highlighted so they're easy to spot at a glance.
+- If no API key is set, or a request fails (bad key, rate limit, network issue), the button shows an inline error instead of breaking the review flow.
+- **Syncing across PCs**: the sentence history (including favorites) is included automatically in the **Export (Sync)** / **Import (Sync)** files in the popup footer, alongside your word library — no separate export needed. Import merges by sentence, so re-importing an older file never loses sentences or favorites added elsewhere.
 
 ## Popup collision with other extensions (e.g. Google Translate's own popup)
 
@@ -93,7 +97,7 @@ This is a general fix (not hardcoded to Google Translate specifically), so it sh
 
 The extension stays fully local — nothing leaves your machine automatically. To keep two or more PCs' word lists in sync, use the two new buttons in the popup footer:
 
-- **Export (Sync)** — downloads a `vocabulary_sync.json` file containing every field, including review progress (level, due date, review count). This is different from the CSV/Anki exports above, which are one-way and don't round-trip.
+- **Export (Sync)** — downloads a `vocabulary_sync.json` file containing every field, including review progress (level, due date, review count) and saved example sentences/favorites. This is different from the CSV/Anki exports above, which are one-way and don't round-trip.
 - **Import (Sync)** — pick a previously exported `.json` file and it **merges** into your current library:
   - Words that don't exist yet are added.
   - Words that exist on both sides keep whichever copy is further along (lower level = more familiar, wins ties by review count) — so importing an older file can never undo reviews you've already done elsewhere.

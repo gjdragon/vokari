@@ -4,15 +4,25 @@ const searchEl = document.getElementById("search");
 const targetLangEl = document.getElementById("targetLang");
 const geminiApiKeyEl = document.getElementById("geminiApiKey");
 const geminiModelEl = document.getElementById("geminiModel");
+const autoGenerateEl = document.getElementById("autoGenerateSentence");
+
+const MAX_SENTENCES_PER_WORD = 8; // keep in sync with background.js
 
 let library = [];
 
 async function load() {
-  const data = await chrome.storage.local.get(["library", "targetLang", "geminiApiKey", "geminiModel"]);
+  const data = await chrome.storage.local.get([
+    "library",
+    "targetLang",
+    "geminiApiKey",
+    "geminiModel",
+    "autoGenerateSentence",
+  ]);
   library = data.library || [];
   targetLangEl.value = data.targetLang || "zh-CN";
   geminiApiKeyEl.value = data.geminiApiKey || "";
   geminiModelEl.value = data.geminiModel || "";
+  autoGenerateEl.checked = !!data.autoGenerateSentence;
   render();
   renderReviewBanner();
 }
@@ -23,6 +33,10 @@ geminiApiKeyEl.addEventListener("change", () => {
 
 geminiModelEl.addEventListener("change", () => {
   chrome.storage.local.set({ geminiModel: geminiModelEl.value.trim() });
+});
+
+autoGenerateEl.addEventListener("change", () => {
+  chrome.storage.local.set({ autoGenerateSentence: autoGenerateEl.checked });
 });
 
 function renderReviewBanner() {
@@ -82,8 +96,19 @@ function render(filter = "") {
     btn.addEventListener("click", async () => {
       const word = btn.getAttribute("data-word");
       const time = Number(btn.getAttribute("data-time"));
+      const removedEntry = library.find((e) => e.word === word && e.savedAt === time);
       library = library.filter((e) => !(e.word === word && e.savedAt === time));
-      await chrome.storage.local.set({ library });
+      const updates = { library };
+
+      // Only drop cached sentences if no other saved entry still shares this
+      // word+translation identity (e.g. a duplicate re-save of the same word).
+      if (removedEntry && !library.some((e) => entryKey(e) === entryKey(removedEntry))) {
+        const { sentenceCache = {} } = await chrome.storage.local.get("sentenceCache");
+        delete sentenceCache[entryKey(removedEntry)];
+        updates.sentenceCache = sentenceCache;
+      }
+
+      await chrome.storage.local.set(updates);
       render(searchEl.value);
       renderReviewBanner();
     });
@@ -109,7 +134,7 @@ targetLangEl.addEventListener("change", () => {
 document.getElementById("clearAll").addEventListener("click", async () => {
   if (confirm("Delete all saved words? This cannot be undone.")) {
     library = [];
-    await chrome.storage.local.set({ library });
+    await chrome.storage.local.set({ library, sentenceCache: {} });
     render();
     renderReviewBanner();
   }
@@ -149,12 +174,14 @@ function entryKey(e) {
   return `${e.word.toLowerCase()}|${e.translation}`;
 }
 
-document.getElementById("exportJson").addEventListener("click", () => {
+document.getElementById("exportJson").addEventListener("click", async () => {
+  const { sentenceCache = {} } = await chrome.storage.local.get("sentenceCache");
   const payload = {
     exportedAt: new Date().toISOString(),
     source: "Word Catcher",
-    version: 1,
+    version: 2,
     library,
+    sentenceCache,
   };
   downloadFile(JSON.stringify(payload, null, 2), "vocabulary_sync.json", "application/json");
 });
@@ -169,11 +196,15 @@ document.getElementById("importJsonFile").addEventListener("change", async (e) =
   if (!file) return;
 
   let incoming;
+  let incomingSentences = {};
   try {
     const text = await file.text();
     const parsed = JSON.parse(text);
     incoming = Array.isArray(parsed) ? parsed : parsed.library;
     if (!Array.isArray(incoming)) throw new Error("No word list found in file");
+    if (!Array.isArray(parsed) && parsed.sentenceCache && typeof parsed.sentenceCache === "object") {
+      incomingSentences = parsed.sentenceCache;
+    }
   } catch (err) {
     showImportStatus(`Import failed: ${err.message}`, true);
     return;
@@ -208,13 +239,54 @@ document.getElementById("importJsonFile").addEventListener("change", async (e) =
   }
 
   library = Array.from(existingByKey.values());
-  await chrome.storage.local.set({ library });
+  const { sentenceCache: currentSentences = {} } = await chrome.storage.local.get("sentenceCache");
+  const mergedSentences = mergeSentenceCaches(currentSentences, incomingSentences);
+
+  await chrome.storage.local.set({ library, sentenceCache: mergedSentences });
   render(searchEl.value);
   renderReviewBanner();
+
+  const sentenceNote = Object.keys(incomingSentences).length
+    ? " Example sentences from the file were merged in too (favorites kept on either side)."
+    : "";
   showImportStatus(
-    `Imported ${incoming.length} word${incoming.length === 1 ? "" : "s"}: ${added} new, ${updated} updated, ${unchanged} already up to date.`
+    `Imported ${incoming.length} word${incoming.length === 1 ? "" : "s"}: ${added} new, ${updated} updated, ${unchanged} already up to date.${sentenceNote}`
   );
 });
+
+// Merges two word -> sentence-history maps. Sentences are matched by their id,
+// so the same generation imported twice never duplicates; if the two sides
+// disagree on favorite status for the same sentence, favorited wins.
+function mergeSentenceCaches(a, b) {
+  const merged = { ...a };
+  for (const [key, incomingList] of Object.entries(b)) {
+    if (!Array.isArray(incomingList)) continue;
+    const existingList = merged[key] || [];
+    const byId = new Map(existingList.map((s) => [s.id, s]));
+    incomingList.forEach((s) => {
+      if (!s || !s.id) return;
+      const existing = byId.get(s.id);
+      if (!existing) {
+        byId.set(s.id, s);
+      } else if (s.favorite && !existing.favorite) {
+        byId.set(s.id, { ...existing, favorite: true });
+      }
+    });
+    merged[key] = trimSentenceList(Array.from(byId.values()));
+  }
+  return merged;
+}
+
+function trimSentenceList(list) {
+  if (list.length <= MAX_SENTENCES_PER_WORD) return list;
+  const sorted = list.slice().sort((a, b) => (a.generatedAt || 0) - (b.generatedAt || 0));
+  while (sorted.length > MAX_SENTENCES_PER_WORD) {
+    const idx = sorted.findIndex((s) => !s.favorite);
+    if (idx === -1) break; // everything left is favorited — stop trimming
+    sorted.splice(idx, 1);
+  }
+  return sorted;
+}
 
 // Given two entries for the same word, return whichever represents more review progress.
 // Lower level = more familiar/further along (level 1 = monthly, level 5 = daily/struggling).
