@@ -79,13 +79,14 @@ function render(filter = "") {
 
   filtered.forEach((entry) => {
     const div = document.createElement("div");
-    div.className = "entry";
-    const date = new Date(entry.savedAt).toLocaleDateString();
     const level = entry.level || 3;
+    const bucket = level <= 2 ? "lvl-low" : level === 3 ? "lvl-mid" : "lvl-high";
+    div.className = `entry ${bucket}`;
+    const date = new Date(entry.savedAt).toLocaleDateString();
     div.innerHTML = `
       <span class="del" data-word="${entry.word}" data-time="${entry.savedAt}">✕ remove</span>
-      <span class="lvl" title="Review level ${level}/5" style="float:right; margin-right:6px; font-size:11px; color:#888; background:#1f2430; border-radius:8px; padding:1px 6px;">L${level}</span>
-      <span class="speak" title="Hear pronunciation" data-word="${entry.word}" data-lang="${entry.sourceLang || ""}" style="float:right; margin-right:6px; cursor:pointer;">🔊</span>
+      <span class="lvl-badge" title="Review level ${level}/5">L${level}</span>
+      <span class="speak" title="Hear pronunciation" data-word="${entry.word}" data-lang="${entry.sourceLang || ""}">🔊</span>
       <div class="word">${entry.word}</div>
       <div class="translation">${entry.translation}</div>
       <div class="meta">${date}${entry.context ? " · " + truncate(entry.context, 60) : ""}</div>
@@ -347,7 +348,7 @@ function pickFurtherAlong(a, b) {
 function showImportStatus(message, isError = false) {
   const el = document.getElementById("importStatus");
   el.textContent = message;
-  el.style.color = isError ? "#e74c3c" : "#a9d6ff";
+  el.style.color = isError ? "#ff6b5e" : "#5eead4";
   el.style.display = "block";
 }
 

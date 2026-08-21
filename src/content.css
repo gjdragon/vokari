@@ -1,80 +1,97 @@
-#wc-popup {
+#vk-popup {
   all: initial;
   position: absolute;
   z-index: 2147483647;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #1f2430;
-  color: #f0f0f0;
-  border-radius: 10px;
-  padding: 10px 12px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #26211a;
+  color: #f4efe4;
+  border: 1px solid #3c3323;
+  border-radius: 12px;
+  padding: 11px 13px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.4);
   font-size: 14px;
   line-height: 1.4;
   max-width: 280px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
-#wc-popup .wc-word {
+#vk-popup .vk-word {
   font-weight: 600;
   color: #ffffff;
   font-size: 15px;
+  position: relative;
+  display: inline-block;
+  width: fit-content;
 }
 
-#wc-popup .wc-translation {
-  color: #a9d6ff;
+#vk-popup .vk-word::before {
+  content: "";
+  position: absolute;
+  left: -3px; right: -4px; bottom: 1px;
+  height: 40%;
+  background: #ffb627;
+  opacity: 0.85;
+  transform: skewX(-8deg);
+  z-index: -1;
+  border-radius: 1px 4px 2px 3px;
 }
 
-#wc-popup .wc-loading {
-  color: #888;
+#vk-popup .vk-translation {
+  color: #5eead4;
+}
+
+#vk-popup .vk-loading {
+  color: #7d7460;
   font-style: italic;
 }
 
-#wc-popup .wc-actions {
+#vk-popup .vk-actions {
   display: flex;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
-#wc-popup button {
+#vk-popup button {
   all: unset;
   cursor: pointer;
   padding: 5px 10px;
-  border-radius: 6px;
+  border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
   text-align: center;
 }
 
-#wc-popup .wc-speak-btn {
-  background: #333;
-  color: #eee;
+#vk-popup .vk-speak-btn {
+  background: #322b20;
+  color: #f4efe4;
   padding: 5px 9px;
 }
 
-#wc-popup .wc-speak-btn:hover {
-  background: #444;
+#vk-popup .vk-speak-btn:hover {
+  background: #3c3323;
 }
 
-#wc-popup .wc-save-btn {
-  background: #4c8dff;
-  color: white;
+#vk-popup .vk-save-btn {
+  background: #ffb627;
+  color: #3a2a05;
 }
 
-#wc-popup .wc-save-btn:hover {
-  background: #3a7ae0;
+#vk-popup .vk-save-btn:hover {
+  background: #ffc757;
 }
 
-#wc-popup .wc-save-btn.wc-saved {
-  background: #2ecc71;
+#vk-popup .vk-save-btn.vk-saved {
+  background: #5eead4;
+  color: #063c34;
 }
 
-#wc-popup .wc-close-btn {
-  background: #333;
-  color: #ccc;
+#vk-popup .vk-close-btn {
+  background: #322b20;
+  color: #b7ac97;
 }
 
-#wc-popup .wc-close-btn:hover {
-  background: #444;
+#vk-popup .vk-close-btn:hover {
+  background: #3c3323;
 }

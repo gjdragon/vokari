@@ -95,14 +95,14 @@ function showPopup(selectedText, rect, contextSentence) {
   removePopup();
 
   popupEl = document.createElement("div");
-  popupEl.id = "wc-popup";
+  popupEl.id = "vk-popup";
   popupEl.innerHTML = `
-    <div class="wc-word">${escapeHtml(selectedText)}</div>
-    <div class="wc-translation wc-loading">Translating…</div>
-    <div class="wc-actions">
-      <button class="wc-speak-btn" title="Hear pronunciation">🔊</button>
-      <button class="wc-save-btn">Save</button>
-      <button class="wc-close-btn">Close</button>
+    <div class="vk-word">${escapeHtml(selectedText)}</div>
+    <div class="vk-translation vk-loading">Translating…</div>
+    <div class="vk-actions">
+      <button class="vk-speak-btn" title="Hear pronunciation">🔊</button>
+      <button class="vk-save-btn">Save</button>
+      <button class="vk-close-btn">Close</button>
     </div>
   `;
   document.body.appendChild(popupEl);
@@ -113,10 +113,10 @@ function showPopup(selectedText, rect, contextSentence) {
   popupEl.style.top = `${top}px`;
   popupEl.style.left = `${left}px`;
 
-  popupEl.querySelector(".wc-close-btn").addEventListener("click", removePopup);
+  popupEl.querySelector(".vk-close-btn").addEventListener("click", removePopup);
   // Speaks with no lang set until the translation response tells us the detected
   // source language below — the browser will still fall back to a default voice.
-  popupEl.querySelector(".wc-speak-btn").addEventListener("click", () => {
+  popupEl.querySelector(".vk-speak-btn").addEventListener("click", () => {
     speak(selectedText, popupEl.dataset.sourceLang);
   });
 
@@ -125,13 +125,13 @@ function showPopup(selectedText, rect, contextSentence) {
     { type: "TRANSLATE", text: selectedText },
     (response) => {
       if (!popupEl) return; // popup may have been closed already
-      const translationEl = popupEl.querySelector(".wc-translation");
+      const translationEl = popupEl.querySelector(".vk-translation");
       if (response && response.ok) {
         translationEl.textContent = response.translation;
-        translationEl.classList.remove("wc-loading");
+        translationEl.classList.remove("vk-loading");
         popupEl.dataset.sourceLang = response.sourceLang;
 
-        popupEl.querySelector(".wc-save-btn").addEventListener("click", (e) => {
+        popupEl.querySelector(".vk-save-btn").addEventListener("click", (e) => {
           chrome.runtime.sendMessage(
             {
               type: "SAVE_WORD",
@@ -147,14 +147,14 @@ function showPopup(selectedText, rect, contextSentence) {
             },
             () => {
               e.target.textContent = "Saved ✓";
-              e.target.classList.add("wc-saved");
+              e.target.classList.add("vk-saved");
               setTimeout(removePopup, 700);
             }
           );
         });
       } else {
         translationEl.textContent = "Translation failed";
-        translationEl.classList.remove("wc-loading");
+        translationEl.classList.remove("vk-loading");
       }
     }
   );

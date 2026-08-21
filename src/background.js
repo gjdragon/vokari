@@ -495,7 +495,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     chrome.notifications.create("dailyReviewReminder", {
       type: "basic",
       iconUrl: "icon128.png",
-      title: "Vocabulary review time",
+      title: "Vokari — review time",
       message: `You have ${dueCount} word${dueCount === 1 ? "" : "s"} due for review today.`,
       priority: 1,
     });

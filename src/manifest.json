@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Word Catcher – Translate & Save",
-  "version": "1.0.0",
-  "description": "Highlight a word on any page, see its translation, and save it to your personal vocabulary library.",
+  "name": "Vokari — AI-powered vocabulary companion",
+  "version": "1.1.0",
+  "description": "Highlight a word on any page, see its translation, and save it to a vocabulary library with AI example sentences, writing practice, and spaced-repetition review.",
   "permissions": ["storage", "activeTab", "downloads", "alarms", "notifications"],
   "host_permissions": [
     "https://translate.googleapis.com/*",
@@ -21,7 +21,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "My Vocabulary Library"
+    "default_title": "Vokari"
   },
   "icons": {
     "16": "icon16.png",

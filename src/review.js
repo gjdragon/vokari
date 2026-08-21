@@ -114,6 +114,7 @@ function showCurrent() {
 
   wordEl.textContent = entry.word;
   translationEl.textContent = entry.translation;
+  translationEl.classList.toggle("revealed", revealed);
   translationEl.style.display = revealed ? "block" : "none";
   contextEl.textContent = entry.context || "";
   hintEl.style.display = revealed ? "none" : "block";
@@ -123,6 +124,7 @@ function showCurrent() {
 
   const level = result ? result.level : entry.level || 3;
   levelBadgeEl.textContent = `Level ${level}/5 · ${LEVEL_LABEL[level]}`;
+  levelBadgeEl.className = level <= 2 ? "lvl-low" : level === 3 ? "lvl-mid" : "lvl-high";
 
   if (result) {
     navRowEl.style.display = "flex";
@@ -492,6 +494,7 @@ practiceHistoryToggle.addEventListener("click", () => {
 cardEl.addEventListener("click", () => {
   if (revealed) return;
   revealed = true;
+  translationEl.classList.add("revealed");
   translationEl.style.display = "block";
   hintEl.style.display = "none";
   gradeRowEl.style.display = "flex";

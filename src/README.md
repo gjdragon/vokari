@@ -1,6 +1,6 @@
-# Vokari — Translate & Save
+# Vokari — AI-powered vocabulary companion
 
-Highlight any word/phrase on a webpage → see a translation popup → click Save → it goes into your personal vocabulary library, viewable/searchable/exportable from the toolbar icon.
+Highlight any word/phrase on a webpage → see a translation popup → click Save → it goes into your personal vocabulary library, viewable/searchable/exportable from the toolbar icon. From there, Vokari's spaced-repetition review, AI example sentences, and AI writing-practice polish turn saved words into words you actually know.
 
 ## How to load it (unpacked, for development/personal use)
 

@@ -2,88 +2,154 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Review — My Vocabulary</title>
+  <title>Review — Vokari</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --ink-950: #1a1711;
+      --ink-900: #201c14;
+      --surface: #26211a;
+      --surface-raised: #322b20;
+      --border: #3c3323;
+      --paper: #f4efe4;
+      --text-secondary: #b7ac97;
+      --text-tertiary: #7d7460;
+      --gold: #ffb627;
+      --gold-ink: #3a2a05;
+      --coral: #ff6b5e;
+      --mint: #5eead4;
+      --mint-ink: #063c34;
+    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      background: #12141a;
-      color: #eee;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--ink-950);
+      background-image: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255,182,39,0.06), transparent 60%);
+      color: var(--paper);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
+      padding: 30px 16px 60px;
+    }
+    .page-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .brand-mark {
+      position: relative;
+      display: inline-block;
+      font-family: "Fraunces", Georgia, serif;
+      font-weight: 700;
+      font-size: 26px;
+      color: var(--paper);
+      letter-spacing: -0.01em;
+    }
+    .brand-mark::before {
+      content: "";
+      position: absolute;
+      left: -4px; right: -6px; bottom: 2px;
+      height: 36%;
+      background: var(--gold);
+      opacity: 0.88;
+      transform: skewX(-8deg) rotate(-1deg);
+      z-index: -1;
+      border-radius: 1px 6px 2px 5px;
+    }
+    .brand-tag {
+      margin-top: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-tertiary);
     }
     #scopeBar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 8px;
-      margin-bottom: 16px;
-      font-size: 13px;
-      color: #aaa;
-      max-width: 460px;
+      margin-bottom: 18px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      max-width: 480px;
       justify-content: center;
     }
-    #scopeBar select, #scopeBar input {
-      background: #1f2430;
-      color: #eee;
-      border: 1px solid #333;
-      border-radius: 6px;
-      padding: 4px 6px;
-      font-size: 13px;
+    #scopeBar > span:first-child {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-tertiary);
     }
+    #scopeBar select, #scopeBar input {
+      background: var(--surface);
+      color: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 8px;
+      font-size: 12.5px;
+      font-family: inherit;
+    }
+    #scopeBar select:focus, #scopeBar input:focus { outline: none; border-color: var(--gold); }
     #scopeBar input[type="number"] {
-      width: 46px;
+      width: 50px;
     }
     #scopeBar button {
-      background: #2a2f3a;
-      color: #eee;
+      background: var(--gold);
+      color: var(--gold-ink);
       border: none;
-      border-radius: 6px;
-      padding: 5px 12px;
-      font-size: 12px;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 12.5px;
+      font-weight: 600;
       cursor: pointer;
     }
-    #scopeBar button:hover {
-      background: #3a4050;
-    }
+    #scopeBar button:hover { filter: brightness(1.08); }
     #levelFilter {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
     #levelFilter label {
       display: flex;
       align-items: center;
-      gap: 2px;
-      background: #1f2430;
-      border: 1px solid #333;
-      border-radius: 6px;
-      padding: 3px 6px;
+      gap: 3px;
+      font-family: "IBM Plex Mono", monospace;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 7px;
       cursor: pointer;
       user-select: none;
+      font-size: 11px;
     }
-    #levelFilter input {
-      margin: 0;
-    }
+    #levelFilter input { margin: 0; accent-color: var(--gold); }
     #progress {
-      color: #888;
-      font-size: 13px;
-      margin-bottom: 18px;
+      font-family: "IBM Plex Mono", monospace;
+      color: var(--text-tertiary);
+      font-size: 12px;
+      margin-bottom: 16px;
+      letter-spacing: 0.03em;
     }
     #card {
-      width: 420px;
-      min-height: 220px;
-      background: #1f2430;
-      border-radius: 14px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+      width: 440px;
+      max-width: 100%;
+      min-height: 230px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.45);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 30px;
+      padding: 34px 30px;
       cursor: pointer;
       text-align: center;
       gap: 14px;
@@ -93,67 +159,100 @@
       position: absolute;
       top: 14px;
       right: 16px;
-      font-size: 11px;
-      color: #888;
-      background: #12141a;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      background: var(--ink-900);
+      border: 1px solid var(--border);
       border-radius: 10px;
       padding: 3px 9px;
     }
+    #levelBadge.lvl-low { color: var(--mint-ink); background: var(--mint); border-color: var(--mint); }
+    #levelBadge.lvl-mid { color: var(--gold-ink); background: var(--gold); border-color: var(--gold); }
+    #levelBadge.lvl-high { color: #3a0f0a; background: var(--coral); border-color: var(--coral); }
     #speakBtn {
       position: absolute;
-      top: 14px;
-      left: 16px;
+      top: 12px;
+      left: 14px;
       font-size: 15px;
-      background: #12141a;
-      border: none;
+      background: var(--ink-900);
+      border: 1px solid var(--border);
       border-radius: 50%;
-      width: 30px;
-      height: 30px;
+      width: 32px;
+      height: 32px;
       cursor: pointer;
-      color: #eee;
+      color: var(--paper);
     }
-    #speakBtn:hover {
-      background: #2a2f3a;
-    }
+    #speakBtn:hover { background: var(--surface-raised); }
     #word {
-      font-size: 28px;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 32px;
       font-weight: 700;
+      color: var(--paper);
     }
     #translation {
+      position: relative;
       font-size: 20px;
-      color: #a9d6ff;
+      color: var(--paper);
       display: none;
+      padding: 2px 6px;
+    }
+    #translation.revealed {
+      display: block;
+      animation: vk-fadein 0.35s ease 0.12s both;
+    }
+    #translation.revealed::before {
+      content: "";
+      position: absolute;
+      left: -6px; right: -6px; top: 10%; bottom: 10%;
+      background: var(--mint);
+      opacity: 0.22;
+      border-radius: 4px;
+      transform-origin: left center;
+      animation: vk-swipe 0.45s cubic-bezier(.22,.8,.25,1);
+      z-index: -1;
+    }
+    @keyframes vk-swipe {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+    @keyframes vk-fadein {
+      from { opacity: 0; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     #context {
       font-size: 13px;
-      color: #777;
+      color: var(--text-tertiary);
       max-width: 340px;
     }
     #hint {
-      font-size: 12px;
-      color: #555;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.03em;
+      color: var(--text-tertiary);
     }
     #sentencePanel {
-      width: 420px;
-      margin-top: 14px;
+      width: 440px;
+      max-width: 100%;
+      margin-top: 16px;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 8px;
     }
     #sentenceBtn {
-      background: #2a2f3a;
-      color: #eee;
-      border: none;
-      border-radius: 8px;
-      padding: 8px 14px;
+      background: var(--surface);
+      color: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 8px 16px;
       font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
       min-width: 190px;
+      font-family: inherit;
     }
-    #sentenceBtn:hover {
-      background: #3a4050;
-    }
+    #sentenceBtn:hover { background: var(--surface-raised); border-color: var(--text-tertiary); }
     #sentenceBtn:disabled {
       opacity: 0.5;
       cursor: default;
@@ -165,11 +264,11 @@
       height: 8px;
       margin-left: 8px;
       border-radius: 50%;
-      background: #eee;
-      animation: wc-pulse 1s ease-in-out infinite;
+      background: var(--gold);
+      animation: vk-pulse 1s ease-in-out infinite;
       vertical-align: middle;
     }
-    @keyframes wc-pulse {
+    @keyframes vk-pulse {
       0%, 100% { opacity: 0.25; }
       50% { opacity: 1; }
     }
@@ -178,16 +277,17 @@
       position: relative;
       width: 100%;
       box-sizing: border-box;
-      background: #1f2430;
-      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       padding: 14px 40px;
       font-size: 15px;
       line-height: 1.5;
       text-align: center;
     }
     #sentenceBox mark {
-      background: rgba(76, 141, 255, 0.18);
-      color: #eee;
+      background: rgba(255, 182, 39, 0.22);
+      color: var(--paper);
       border-radius: 4px;
       padding: 0 3px;
       font-weight: 600;
@@ -200,29 +300,24 @@
       border: none;
       cursor: pointer;
       font-size: 16px;
-      color: #666;
+      color: var(--text-tertiary);
       padding: 2px;
       line-height: 1;
     }
-    #favoriteBtn:hover {
-      color: #ffcc4d;
-    }
-    #favoriteBtn.favorited {
-      color: #ffcc4d;
-    }
+    #favoriteBtn:hover { color: var(--gold); }
+    #favoriteBtn.favorited { color: var(--gold); }
     #historyToggle {
       display: none;
       background: none;
       border: none;
-      color: #888;
+      color: var(--text-tertiary);
       font-size: 11px;
       text-decoration: underline;
       cursor: pointer;
       padding: 0;
+      font-family: inherit;
     }
-    #historyToggle:hover {
-      color: #aaa;
-    }
+    #historyToggle:hover { color: var(--text-secondary); }
     #historyList {
       display: none;
       width: 100%;
@@ -235,16 +330,17 @@
     #sentenceError {
       display: none;
       font-size: 12px;
-      color: #e74c3c;
+      color: var(--coral);
       max-width: 380px;
       text-align: center;
     }
     .history-item {
-      background: #1f2430;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 8px;
       padding: 7px 10px;
       font-size: 12px;
-      color: #bbb;
+      color: var(--text-secondary);
       cursor: pointer;
       text-align: left;
       line-height: 1.4;
@@ -253,25 +349,20 @@
       align-items: flex-start;
       gap: 8px;
     }
-    .history-item:hover {
-      background: #2a2f3a;
-    }
-    .history-item .star {
-      color: #ffcc4d;
-    }
+    .history-item:hover { background: var(--surface-raised); }
+    .history-item .star { color: var(--gold); }
     .history-del {
       flex-shrink: 0;
-      color: #666;
+      color: var(--text-tertiary);
       padding: 0 2px;
     }
-    .history-del:hover {
-      color: #e74c3c;
-    }
+    .history-del:hover { color: var(--coral); }
     #practicePanel {
-      width: 420px;
-      margin-top: 18px;
-      padding-top: 16px;
-      border-top: 1px solid #262b36;
+      width: 440px;
+      max-width: 100%;
+      margin-top: 20px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -279,34 +370,35 @@
     }
     #practiceIntro {
       font-size: 12px;
-      color: #888;
+      color: var(--text-tertiary);
       text-align: center;
     }
     #practiceInput {
       width: 100%;
       box-sizing: border-box;
-      background: #1f2430;
-      border: 1px solid #333;
-      border-radius: 8px;
-      color: #eee;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--paper);
       font-size: 13px;
-      padding: 8px 10px;
+      padding: 9px 11px;
       resize: vertical;
       font-family: inherit;
     }
+    #practiceInput:focus { outline: none; border-color: var(--gold); }
     #practiceBtn {
-      background: #2a2f3a;
-      color: #eee;
-      border: none;
-      border-radius: 8px;
-      padding: 8px 14px;
+      background: var(--surface);
+      color: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 8px 16px;
       font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
       min-width: 160px;
+      font-family: inherit;
     }
-    #practiceBtn:hover {
-      background: #3a4050;
-    }
+    #practiceBtn:hover { background: var(--surface-raised); border-color: var(--text-tertiary); }
     #practiceBtn:disabled {
       opacity: 0.5;
       cursor: default;
@@ -318,14 +410,14 @@
       height: 8px;
       margin-left: 8px;
       border-radius: 50%;
-      background: #eee;
-      animation: wc-pulse 1s ease-in-out infinite;
+      background: var(--gold);
+      animation: vk-pulse 1s ease-in-out infinite;
       vertical-align: middle;
     }
     #practiceError {
       display: none;
       font-size: 12px;
-      color: #e74c3c;
+      color: var(--coral);
       text-align: center;
     }
     #practiceResult {
@@ -336,17 +428,19 @@
       gap: 8px;
     }
     .practice-box {
-      background: #1f2430;
-      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
       padding: 10px 14px;
       font-size: 13px;
       line-height: 1.5;
     }
     .practice-label {
+      font-family: "IBM Plex Mono", monospace;
       font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: #777;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
       margin-bottom: 4px;
       display: flex;
       justify-content: space-between;
@@ -354,14 +448,14 @@
     }
     .diff-removed {
       text-decoration: line-through;
-      color: #e77;
-      background: rgba(231, 119, 119, 0.15);
+      color: var(--coral);
+      background: rgba(255, 107, 94, 0.15);
       border-radius: 3px;
       padding: 0 2px;
     }
     .diff-added {
-      color: #7ee787;
-      background: rgba(126, 231, 135, 0.15);
+      color: var(--mint);
+      background: rgba(94, 234, 212, 0.15);
       border-radius: 3px;
       padding: 0 2px;
       font-weight: 600;
@@ -371,37 +465,32 @@
       border: none;
       cursor: pointer;
       font-size: 14px;
-      color: #666;
+      color: var(--text-tertiary);
       padding: 0;
       line-height: 1;
     }
-    #practiceFavoriteBtn:hover {
-      color: #ffcc4d;
-    }
-    #practiceFavoriteBtn.favorited {
-      color: #ffcc4d;
-    }
+    #practiceFavoriteBtn:hover { color: var(--gold); }
+    #practiceFavoriteBtn.favorited { color: var(--gold); }
     #practiceNotes {
       display: none;
       margin: 0;
       padding-left: 18px;
       font-size: 12px;
-      color: #aaa;
+      color: var(--text-secondary);
       line-height: 1.6;
     }
     #practiceHistoryToggle {
       display: none;
       background: none;
       border: none;
-      color: #888;
+      color: var(--text-tertiary);
       font-size: 11px;
       text-decoration: underline;
       cursor: pointer;
       padding: 0;
+      font-family: inherit;
     }
-    #practiceHistoryToggle:hover {
-      color: #aaa;
-    }
+    #practiceHistoryToggle:hover { color: var(--text-secondary); }
     #practiceHistoryList {
       display: none;
       width: 100%;
@@ -416,7 +505,7 @@
       flex-direction: column;
       align-items: center;
       gap: 10px;
-      margin-top: 22px;
+      margin-top: 24px;
     }
     #navRow, #gradeRow {
       display: flex;
@@ -424,46 +513,57 @@
     }
     #controls button {
       border: none;
-      border-radius: 8px;
-      padding: 10px 18px;
+      border-radius: 20px;
+      padding: 10px 20px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      color: white;
+      font-family: inherit;
     }
     #prevBtn, #nextBtn {
-      background: #3a4050;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--paper);
     }
+    #prevBtn:hover, #nextBtn:hover { background: var(--surface-raised); }
     #prevBtn:disabled, #nextBtn:disabled {
       opacity: 0.35;
       cursor: default;
     }
-    #knewIt { background: #2ecc71; }
-    #forgot { background: #e74c3c; }
-    #remembered { background: #2ecc71; }
+    #knewIt, #remembered { background: var(--mint); color: var(--mint-ink); }
+    #knewIt:hover, #remembered:hover { filter: brightness(1.08); }
+    #forgot { background: var(--coral); color: #3a0f0a; }
+    #forgot:hover { filter: brightness(1.08); }
     #alreadyGraded {
       font-size: 12px;
-      color: #888;
+      color: var(--text-tertiary);
       display: none;
     }
     #lastResult {
-      margin-top: 10px;
+      margin-top: 12px;
+      font-family: "IBM Plex Mono", monospace;
       font-size: 12px;
-      color: #888;
+      color: var(--text-secondary);
       min-height: 16px;
     }
     #empty {
       text-align: center;
-      color: #888;
+      color: var(--text-secondary);
     }
     #empty h2 {
-      color: #eee;
+      font-family: "Fraunces", Georgia, serif;
+      color: var(--paper);
+      font-size: 24px;
     }
   </style>
 </head>
 <body>
+  <div class="page-header">
+    <span class="brand-mark">Vokari</span>
+    <span class="brand-tag">Review session</span>
+  </div>
   <div id="scopeBar">
-    <span>Review:</span>
+    <span>Scope</span>
     <select id="scope">
       <option value="due">Due now</option>
       <option value="days">Last N days</option>
