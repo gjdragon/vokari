@@ -23,6 +23,7 @@
       --mint-ink: #063c34;
     }
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
       background: var(--ink-950);
@@ -32,22 +33,23 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 30px 16px 60px;
+      height: 100vh;
+      overflow: hidden;
+      padding: 16px 20px 14px;
     }
     .page-header {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 18px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
     }
     .brand-mark {
       position: relative;
       display: inline-block;
       font-family: "Fraunces", Georgia, serif;
       font-weight: 700;
-      font-size: 26px;
+      font-size: 22px;
       color: var(--paper);
       letter-spacing: -0.01em;
     }
@@ -63,8 +65,8 @@
       border-radius: 1px 6px 2px 5px;
     }
     .brand-tag {
-      margin-top: 4px;
-      font-size: 11px;
+      margin-top: 2px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.12em;
       color: var(--text-tertiary);
@@ -74,11 +76,12 @@
       flex-wrap: wrap;
       align-items: center;
       gap: 8px;
-      margin-bottom: 18px;
+      margin-bottom: 8px;
       font-size: 12.5px;
       color: var(--text-secondary);
-      max-width: 480px;
+      max-width: 700px;
       justify-content: center;
+      flex-shrink: 0;
     }
     #scopeBar > span:first-child {
       font-family: "IBM Plex Mono", monospace;
@@ -133,14 +136,58 @@
     #progress {
       font-family: "IBM Plex Mono", monospace;
       color: var(--text-tertiary);
-      font-size: 12px;
-      margin-bottom: 16px;
+      font-size: 11.5px;
+      margin-bottom: 10px;
       letter-spacing: 0.03em;
+      flex-shrink: 0;
     }
+
+    /* --- three-column layout --- */
+    #reviewGrid {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 18px;
+      width: 100%;
+      max-width: 1220px;
+      flex: 1;
+      min-height: 0;
+    }
+    .col {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+    .col-side {
+      flex: 1 1 0;
+      max-width: 300px;
+      background: var(--ink-900);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .col-mid {
+      flex: 1.35 1 0;
+      max-width: 460px;
+      align-items: center;
+      padding: 2px 2px 10px;
+    }
+    .col-heading {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-tertiary);
+      text-align: center;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
     #card {
-      width: 440px;
-      max-width: 100%;
-      min-height: 230px;
+      width: 100%;
+      min-height: 210px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 16px;
@@ -149,11 +196,12 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 34px 30px;
+      padding: 26px 24px;
       cursor: pointer;
       text-align: center;
-      gap: 14px;
+      gap: 12px;
       position: relative;
+      flex-shrink: 0;
     }
     #levelBadge {
       position: absolute;
@@ -186,13 +234,13 @@
     #speakBtn:hover { background: var(--surface-raised); }
     #word {
       font-family: "Fraunces", Georgia, serif;
-      font-size: 32px;
+      font-size: 28px;
       font-weight: 700;
       color: var(--paper);
     }
     #translation {
       position: relative;
-      font-size: 20px;
+      font-size: 18px;
       color: var(--paper);
       display: none;
       padding: 2px 6px;
@@ -221,20 +269,20 @@
       to { opacity: 1; transform: translateY(0); }
     }
     #context {
-      font-size: 13px;
+      font-size: 12.5px;
       color: var(--text-tertiary);
-      max-width: 340px;
+      max-width: 320px;
     }
     #hint {
       font-family: "IBM Plex Mono", monospace;
-      font-size: 11px;
+      font-size: 10.5px;
       letter-spacing: 0.03em;
       color: var(--text-tertiary);
     }
+
+    /* AI sentence column */
     #sentencePanel {
-      width: 440px;
-      max-width: 100%;
-      margin-top: 16px;
+      width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -245,18 +293,15 @@
       color: var(--paper);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 8px 16px;
+      padding: 8px 14px;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      min-width: 190px;
+      width: 100%;
       font-family: inherit;
     }
     #sentenceBtn:hover { background: var(--surface-raised); border-color: var(--text-tertiary); }
-    #sentenceBtn:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
+    #sentenceBtn:disabled { opacity: 0.5; cursor: default; }
     #sentenceBtn.loading::after {
       content: "";
       display: inline-block;
@@ -280,10 +325,10 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 14px 40px;
-      font-size: 15px;
+      padding: 12px 32px 12px 14px;
+      font-size: 13.5px;
       line-height: 1.5;
-      text-align: center;
+      text-align: left;
     }
     #sentenceBox mark {
       background: rgba(255, 182, 39, 0.22);
@@ -299,7 +344,7 @@
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 15px;
       color: var(--text-tertiary);
       padding: 2px;
       line-height: 1;
@@ -308,6 +353,7 @@
     #favoriteBtn.favorited { color: var(--gold); }
     #historyToggle {
       display: none;
+      align-self: flex-start;
       background: none;
       border: none;
       color: var(--text-tertiary);
@@ -329,9 +375,8 @@
     }
     #sentenceError {
       display: none;
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--coral);
-      max-width: 380px;
       text-align: center;
     }
     .history-item {
@@ -339,7 +384,7 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 7px 10px;
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-secondary);
       cursor: pointer;
       text-align: left;
@@ -357,19 +402,17 @@
       padding: 0 2px;
     }
     .history-del:hover { color: var(--coral); }
+
+    /* Practice column */
     #practicePanel {
-      width: 440px;
-      max-width: 100%;
-      margin-top: 20px;
-      padding-top: 18px;
-      border-top: 1px solid var(--border);
+      width: 100%;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 8px;
     }
     #practiceIntro {
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-tertiary);
       text-align: center;
     }
@@ -380,7 +423,7 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       color: var(--paper);
-      font-size: 13px;
+      font-size: 12.5px;
       padding: 9px 11px;
       resize: vertical;
       font-family: inherit;
@@ -391,18 +434,15 @@
       color: var(--paper);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 8px 16px;
+      padding: 8px 14px;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      min-width: 160px;
+      width: 100%;
       font-family: inherit;
     }
     #practiceBtn:hover { background: var(--surface-raised); border-color: var(--text-tertiary); }
-    #practiceBtn:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
+    #practiceBtn:disabled { opacity: 0.5; cursor: default; }
     #practiceBtn.loading::after {
       content: "";
       display: inline-block;
@@ -416,7 +456,7 @@
     }
     #practiceError {
       display: none;
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--coral);
       text-align: center;
     }
@@ -431,13 +471,13 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 13px;
+      padding: 9px 12px;
+      font-size: 12.5px;
       line-height: 1.5;
     }
     .practice-label {
       font-family: "IBM Plex Mono", monospace;
-      font-size: 10px;
+      font-size: 9.5px;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--text-tertiary);
@@ -464,7 +504,7 @@
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       color: var(--text-tertiary);
       padding: 0;
       line-height: 1;
@@ -474,13 +514,14 @@
     #practiceNotes {
       display: none;
       margin: 0;
-      padding-left: 18px;
-      font-size: 12px;
+      padding-left: 16px;
+      font-size: 11.5px;
       color: var(--text-secondary);
       line-height: 1.6;
     }
     #practiceHistoryToggle {
       display: none;
+      align-self: flex-start;
       background: none;
       border: none;
       color: var(--text-tertiary);
@@ -500,25 +541,33 @@
       flex-direction: column;
       gap: 5px;
     }
+
+    /* Middle column controls */
     #controls {
       display: none;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
-      margin-top: 24px;
+      gap: 8px;
+      margin-top: 14px;
+      width: 100%;
+      flex-shrink: 0;
     }
     #navRow, #gradeRow {
       display: flex;
-      gap: 10px;
+      gap: 8px;
+      justify-content: center;
+      width: 100%;
     }
     #controls button {
       border: none;
       border-radius: 20px;
-      padding: 10px 20px;
-      font-size: 13px;
+      padding: 9px 14px;
+      font-size: 12.5px;
       font-weight: 600;
       cursor: pointer;
       font-family: inherit;
+      flex: 1;
+      max-width: 140px;
     }
     #prevBtn, #nextBtn {
       background: var(--surface);
@@ -526,34 +575,44 @@
       color: var(--paper);
     }
     #prevBtn:hover, #nextBtn:hover { background: var(--surface-raised); }
-    #prevBtn:disabled, #nextBtn:disabled {
-      opacity: 0.35;
-      cursor: default;
-    }
+    #prevBtn:disabled, #nextBtn:disabled { opacity: 0.35; cursor: default; }
     #knewIt, #remembered { background: var(--mint); color: var(--mint-ink); }
     #knewIt:hover, #remembered:hover { filter: brightness(1.08); }
     #forgot { background: var(--coral); color: #3a0f0a; }
     #forgot:hover { filter: brightness(1.08); }
     #alreadyGraded {
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-tertiary);
       display: none;
+      text-align: center;
     }
     #lastResult {
-      margin-top: 12px;
+      margin-top: 8px;
       font-family: "IBM Plex Mono", monospace;
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-secondary);
       min-height: 16px;
+      text-align: center;
+      flex-shrink: 0;
     }
+
     #empty {
       text-align: center;
       color: var(--text-secondary);
+      max-width: 420px;
+      margin: auto;
     }
     #empty h2 {
       font-family: "Fraunces", Georgia, serif;
       color: var(--paper);
       font-size: 24px;
+    }
+
+    @media (max-width: 900px) {
+      body { height: auto; min-height: 100vh; overflow-y: auto; padding-bottom: 30px; }
+      #reviewGrid { flex-direction: column; align-items: center; overflow: visible; }
+      .col { overflow-y: visible; }
+      .col-side, .col-mid { max-width: 460px; width: 100%; }
     }
   </style>
 </head>
@@ -581,59 +640,73 @@
     <button id="startBtn">Go</button>
   </div>
   <div id="progress"></div>
-  <div id="card" style="display:none;">
-    <div id="levelBadge"></div>
-    <button id="speakBtn" title="Hear pronunciation">🔊</button>
-    <div id="word"></div>
-    <div id="translation"></div>
-    <div id="context"></div>
-    <div id="hint">Click the card to reveal the translation</div>
-  </div>
-  <div id="sentencePanel">
-    <button id="sentenceBtn">✨ Make a sentence</button>
-    <div id="sentenceBox">
-      <button id="favoriteBtn" title="Save as favorite">☆</button>
-      <div id="sentenceText"></div>
-    </div>
-    <button id="historyToggle"></button>
-    <div id="historyList"></div>
-    <div id="sentenceError"></div>
-  </div>
-  <div id="practicePanel">
-    <div id="practiceIntro">📝 Try writing your own sentence with "<span id="practiceWord"></span>"</div>
-    <textarea id="practiceInput" rows="2" placeholder="Type a sentence using the word…"></textarea>
-    <button id="practiceBtn">✨ Polish with AI</button>
-    <div id="practiceError"></div>
-    <div id="practiceResult">
-      <div class="practice-box">
-        <div class="practice-label"><span>Your sentence</span></div>
-        <div id="practiceOriginalText"></div>
-      </div>
-      <div class="practice-box">
-        <div class="practice-label">
-          <span>Polished by AI</span>
-          <button id="practiceFavoriteBtn" title="Save as favorite">☆</button>
+
+  <div id="reviewGrid">
+    <div class="col col-side" id="sentenceCol">
+      <div class="col-heading">✨ AI Example</div>
+      <div id="sentencePanel">
+        <button id="sentenceBtn">✨ Make a sentence</button>
+        <div id="sentenceBox">
+          <button id="favoriteBtn" title="Save as favorite">☆</button>
+          <div id="sentenceText"></div>
         </div>
-        <div id="practiceCorrectedText"></div>
+        <button id="historyToggle"></button>
+        <div id="historyList"></div>
+        <div id="sentenceError"></div>
       </div>
-      <ul id="practiceNotes"></ul>
     </div>
-    <button id="practiceHistoryToggle"></button>
-    <div id="practiceHistoryList"></div>
+
+    <div class="col col-mid">
+      <div id="card" style="display:none;">
+        <div id="levelBadge"></div>
+        <button id="speakBtn" title="Hear pronunciation">🔊</button>
+        <div id="word"></div>
+        <div id="translation"></div>
+        <div id="context"></div>
+        <div id="hint">Click the card to reveal the translation</div>
+      </div>
+      <div id="controls">
+        <div id="navRow">
+          <button id="prevBtn">◀ Prev</button>
+          <button id="knewIt">✅ Knew it</button>
+          <button id="nextBtn">Next ▶</button>
+        </div>
+        <div id="gradeRow" style="display:none;">
+          <button id="forgot">❌ Forgot</button>
+          <button id="remembered">✅ Remembered</button>
+        </div>
+        <div id="alreadyGraded"></div>
+      </div>
+      <div id="lastResult"></div>
+    </div>
+
+    <div class="col col-side" id="practiceCol">
+      <div class="col-heading">📝 Your Practice</div>
+      <div id="practicePanel">
+        <div id="practiceIntro">Try writing your own sentence with "<span id="practiceWord"></span>"</div>
+        <textarea id="practiceInput" rows="2" placeholder="Type a sentence using the word…"></textarea>
+        <button id="practiceBtn">✨ Polish with AI</button>
+        <div id="practiceError"></div>
+        <div id="practiceResult">
+          <div class="practice-box">
+            <div class="practice-label"><span>Your sentence</span></div>
+            <div id="practiceOriginalText"></div>
+          </div>
+          <div class="practice-box">
+            <div class="practice-label">
+              <span>Polished by AI</span>
+              <button id="practiceFavoriteBtn" title="Save as favorite">☆</button>
+            </div>
+            <div id="practiceCorrectedText"></div>
+          </div>
+          <ul id="practiceNotes"></ul>
+        </div>
+        <button id="practiceHistoryToggle"></button>
+        <div id="practiceHistoryList"></div>
+      </div>
+    </div>
   </div>
-  <div id="controls">
-    <div id="navRow">
-      <button id="prevBtn">◀ Prev</button>
-      <button id="knewIt">✅ Knew it</button>
-      <button id="nextBtn">Next ▶</button>
-    </div>
-    <div id="gradeRow" style="display:none;">
-      <button id="forgot">❌ Forgot</button>
-      <button id="remembered">✅ Remembered</button>
-    </div>
-    <div id="alreadyGraded"></div>
-  </div>
-  <div id="lastResult"></div>
+
   <div id="empty" style="display:none;">
     <h2>All caught up 🎉</h2>
     <p>No words are due for review right now. Come back tomorrow, or keep highlighting new words as you read.</p>

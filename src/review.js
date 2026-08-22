@@ -97,15 +97,15 @@ function showCurrent() {
   if (queue.length === 0) {
     cardEl.style.display = "none";
     controlsEl.style.display = "none";
-    document.getElementById("sentencePanel").style.display = "none";
-    document.getElementById("practicePanel").style.display = "none";
+    document.getElementById("sentenceCol").style.display = "none";
+    document.getElementById("practiceCol").style.display = "none";
     progressEl.textContent = "";
     emptyEl.style.display = "block";
     document.querySelector("#empty p").textContent = noResultsMessage();
     return;
   }
-  document.getElementById("sentencePanel").style.display = "flex";
-  document.getElementById("practicePanel").style.display = "flex";
+  document.getElementById("sentenceCol").style.display = "flex";
+  document.getElementById("practiceCol").style.display = "flex";
 
   const entry = current();
   const key = keyFor(entry);

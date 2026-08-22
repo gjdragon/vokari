@@ -56,6 +56,25 @@ document.getElementById("startReview").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("review.html") });
 });
 
+// --- data menu (export/import/clear dropdown) ---
+const menuToggle = document.getElementById("menuToggle");
+const dataMenu = document.getElementById("dataMenu");
+menuToggle.addEventListener("click", (e) => {
+  e.stopPropagation();
+  dataMenu.classList.toggle("open");
+});
+document.addEventListener("click", (e) => {
+  if (dataMenu.classList.contains("open") && !dataMenu.contains(e.target) && e.target !== menuToggle) {
+    dataMenu.classList.remove("open");
+  }
+});
+dataMenu.querySelectorAll(".menu-item").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    // let the item's own click handler (download, file picker, confirm dialog) run first
+    setTimeout(() => dataMenu.classList.remove("open"), 30);
+  });
+});
+
 function speak(text, lang) {
   if (!("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();

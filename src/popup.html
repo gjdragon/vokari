@@ -41,7 +41,13 @@
       align-items: center;
       gap: 10px;
     }
-    .brand { display: flex; flex-direction: column; gap: 1px; }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .brand { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
     .brand-mark {
       position: relative;
       display: inline-block;
@@ -69,6 +75,7 @@
       letter-spacing: 0.09em;
       color: var(--text-tertiary);
       font-weight: 500;
+      white-space: nowrap;
     }
     header select {
       font-family: "Inter", sans-serif;
@@ -78,8 +85,61 @@
       color: var(--paper);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 6px 10px;
+      padding: 6px 8px;
       cursor: pointer;
+      min-width: 0;
+    }
+    .menu-wrap { position: relative; }
+    .icon-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--paper);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .icon-btn:hover { background: var(--surface-raised); }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px;
+      min-width: 195px;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.5);
+      z-index: 20;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .dropdown-menu.open { display: flex; }
+    .menu-item {
+      all: unset;
+      box-sizing: border-box;
+      width: 100%;
+      cursor: pointer;
+      padding: 8px 10px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--paper);
+      font-family: inherit;
+    }
+    .menu-item:hover { background: var(--surface-raised); }
+    .menu-item-danger { color: var(--coral); }
+    .menu-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 5px 4px;
     }
     #reviewBanner {
       display: none;
@@ -143,7 +203,7 @@
     #search::placeholder { color: var(--text-tertiary); }
     #search:focus { outline: none; border-color: var(--gold); }
     #list {
-      max-height: 330px;
+      max-height: 400px;
       overflow-y: auto;
       padding: 6px 14px;
     }
@@ -203,29 +263,6 @@
       float: right;
       cursor: pointer;
       font-size: 12px;
-    }
-    footer {
-      display: flex;
-      gap: 6px;
-      padding: 10px 14px;
-      border-top: 1px solid var(--border);
-    }
-    footer button {
-      flex: 1;
-      padding: 7px 4px;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      background: transparent;
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 11.5px;
-      font-weight: 500;
-      font-family: inherit;
-    }
-    footer button:hover {
-      background: var(--surface);
-      color: var(--paper);
-      border-color: var(--text-tertiary);
     }
     #empty {
       text-align: center;
@@ -302,18 +339,33 @@
       <span class="brand-mark">Vokari</span>
       <span class="brand-tag">Vocabulary companion</span>
     </div>
-    <select id="targetLang">
-      <option value="zh-CN">中文 (Chinese)</option>
-      <option value="es">Español</option>
-      <option value="fr">Français</option>
-      <option value="ja">日本語</option>
-      <option value="ko">한국어</option>
-      <option value="de">Deutsch</option>
-      <option value="pt">Português</option>
-      <option value="vi">Tiếng Việt</option>
-      <option value="ru">Русский</option>
-      <option value="ar">العربية</option>
-    </select>
+    <div class="header-actions">
+      <select id="targetLang">
+        <option value="zh-CN">中文 (Chinese)</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="ja">日本語</option>
+        <option value="ko">한국어</option>
+        <option value="de">Deutsch</option>
+        <option value="pt">Português</option>
+        <option value="vi">Tiếng Việt</option>
+        <option value="ru">Русский</option>
+        <option value="ar">العربية</option>
+      </select>
+      <div class="menu-wrap">
+        <button id="menuToggle" class="icon-btn" title="Export, import & clear">⋯</button>
+        <div id="dataMenu" class="dropdown-menu">
+          <button id="exportCsv" class="menu-item">⬇ Export CSV</button>
+          <button id="exportAnki" class="menu-item">⬇ Export Anki</button>
+          <div class="menu-divider"></div>
+          <button id="exportJson" class="menu-item" title="Full backup incl. review progress — use this to sync between PCs">⇄ Export (Sync)</button>
+          <button id="importJsonBtn" class="menu-item" title="Merge a previously exported file into this library">⇄ Import (Sync)</button>
+          <input id="importJsonFile" type="file" accept="application/json" style="display:none;" />
+          <div class="menu-divider"></div>
+          <button id="clearAll" class="menu-item menu-item-danger">🗑 Clear all</button>
+        </div>
+      </div>
+    </div>
   </header>
   <div id="reviewBanner">
     <span id="dueText"></span>
@@ -322,19 +374,9 @@
   <div class="search-wrap">
     <input id="search" type="text" placeholder="Search saved words…" />
   </div>
+  <div id="importStatus"></div>
   <div id="list"></div>
   <div id="empty" style="display:none;">No words saved yet. Highlight a word on any page to get started.</div>
-  <footer>
-    <button id="exportCsv">Export CSV</button>
-    <button id="exportAnki">Export Anki</button>
-    <button id="clearAll">Clear all</button>
-  </footer>
-  <footer style="border-top: none; padding-top: 0;">
-    <button id="exportJson" title="Full backup incl. review progress — use this to sync between PCs">Export (Sync)</button>
-    <button id="importJsonBtn" title="Merge a previously exported file into this library">Import (Sync)</button>
-    <input id="importJsonFile" type="file" accept="application/json" style="display:none;" />
-  </footer>
-  <div id="importStatus"></div>
   <details id="settingsPanel">
     <summary>✨ Sentence practice settings (Gemini API)</summary>
     <div class="settings-body">
