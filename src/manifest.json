@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vokari — AI-powered vocabulary companion",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "description": "Highlight a word on any page, see its translation, and save it to a vocabulary library with AI example sentences, writing practice, and spaced-repetition review.",
   "permissions": ["storage", "activeTab", "downloads", "alarms", "notifications"],
   "host_permissions": [

@@ -1,13 +1,35 @@
 # Vokari — AI-powered vocabulary companion
 
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Manifest](https://img.shields.io/badge/manifest-v3-informational)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
 Highlight any word/phrase on a webpage → see a translation popup → click Save → it goes into your personal vocabulary library, viewable/searchable/exportable from the toolbar icon. From there, Vokari's spaced-repetition review, AI example sentences, and AI writing-practice polish turn saved words into words you actually know.
+
+**Status:** unpacked/developer-mode Chrome extension — not published on the Chrome Web Store. Load it manually via `chrome://extensions` (steps below).
+
+## Contents
+
+- [How to load it](#how-to-load-it-unpacked-for-developmentpersonal-use)
+- [How to use it](#how-to-use-it)
+- [Notes / things to know](#notes--things-to-know)
+- [Daily flashcard review (5-level system)](#daily-flashcard-review-5-level-system)
+- [Pronunciation / sound](#pronunciation--sound)
+- [Sentence practice (Gemini API)](#sentence-practice-gemini-api)
+- [Writing practice (Gemini API)](#writing-practice-gemini-api)
+- [Popup collision with other extensions](#popup-collision-with-other-extensions-eg-google-translates-own-popup)
+- [Syncing between multiple PCs](#syncing-between-multiple-pcs-no-cloud-account-needed)
+- [Permissions & privacy](#permissions--privacy)
+- [Possible next steps](#possible-next-steps)
+- [Changelog](#changelog)
+- [License](#license)
 
 ## How to load it (unpacked, for development/personal use)
 
-1. Unzip this folder somewhere permanent (don't delete it after loading — Chrome reads the extension live from disk).
+1. Clone or download this repo somewhere permanent (don't delete it after loading — Chrome reads the extension live from disk).
 2. Go to `chrome://extensions` in Chrome.
 3. Turn on **Developer mode** (top-right toggle).
-4. Click **Load unpacked** and select this folder.
+4. Click **Load unpacked** and select the **`src/`** folder (the one containing `manifest.json`) — not the repo root.
 5. Pin the extension icon to your toolbar.
 
 ## How to use it
@@ -123,8 +145,30 @@ The extension stays fully local — nothing leaves your machine automatically. T
 
 It's a manual two-click sync rather than automatic/real-time, but it keeps the extension fully standalone with no account, no server, and no data leaving your control except through storage you already trust.
 
+## Permissions & privacy
+
+| Permission | Why Vokari needs it |
+|---|---|
+| `storage` | Save your vocabulary library, review progress, and settings locally via `chrome.storage.local`. |
+| `activeTab` | Read the current tab's selection/context when you highlight a word. |
+| `downloads` | Save CSV/Anki/JSON exports to your computer. |
+| `alarms` | Run the once-daily due-words check. |
+| `notifications` | Show the Chrome notification when words are due. |
+| `translate.googleapis.com` (host) | Send the selected word to Google's public translate endpoint. |
+| `generativelanguage.googleapis.com` (host) | Send prompts to the Gemini API when you use example sentences or writing practice — only ever called if you've set your own API key. |
+
+Nothing is sent anywhere except the two Google endpoints above, and only in direct response to your actions (translating a word, or generating/polishing a sentence). There's no analytics, no third-party server, and no account system — your library lives in local browser storage unless you export it yourself.
+
 ## Possible next steps
 
 - Automate the sync-folder workflow above with a Chrome alarm that periodically writes an export to a fixed path (would need the `downloads` permission's overwrite behavior, or File System Access API where supported).
 - Let Gemini vary example-sentence difficulty based on the word's current review level (simpler sentences for level 4-5 struggling words, more complex ones for level 1-2 well-known words).
 - Add a lightweight "grammar patterns" view that aggregates the notes across all your writing-practice attempts, to surface recurring mistakes (e.g. "you often mix up past tense of irregular verbs") rather than reviewing them one attempt at a time.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
