@@ -76,6 +76,7 @@ The card shows the word's current level (e.g. "Level 3/5 · Weekly") so you can 
 - **◀ Prev / Next ▶** move between cards without revealing the translation, so you can skim the words in a session before deciding where to focus. Left/Right arrow keys do the same.
 - **✅ Knew it** grades a word as remembered *without* needing to click the card and reveal the translation first — for words you're confident on, this is a one-click pass straight to the next card.
 - Clicking the card still reveals the translation, after which **❌ Forgot** / **✅ Remembered** grade it normally.
+- **⌨ Type the word** (checkbox next to the scope controls) flips the direction: the translation is shown up front and you type the English word yourself instead of tapping to reveal it. Hit Enter or **Check** to see whether you got it right — correct/incorrect is shown before you grade with Forgot/Remembered, so a typo doesn't cost you if you actually knew the meaning. **Show answer instead** skips straight to the reveal if you're stuck. The setting persists across sessions.
 - If you navigate back (Prev) to a card you already graded this session, it reopens showing your answer with a "Graded this session" note instead of the grading buttons, so you can't accidentally grade the same card twice.
 
 Words saved before this system existed (or SM-2-era entries) are migrated automatically the first time you open the review page — they're assigned level 3 without losing their existing due date.

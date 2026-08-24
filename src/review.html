@@ -133,6 +133,20 @@
       font-size: 11px;
     }
     #levelFilter input { margin: 0; accent-color: var(--gold); }
+    #modeToggle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: "IBM Plex Mono", monospace;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 9px 4px 7px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 11px;
+    }
+    #modeToggle input { margin: 0; accent-color: var(--gold); }
     #progress {
       font-family: "IBM Plex Mono", monospace;
       color: var(--text-tertiary);
@@ -289,6 +303,64 @@
       display: block;
       animation: vk-fadein 0.35s ease 0.18s both;
     }
+    #word.correct { color: var(--mint); }
+    #word.incorrect { color: var(--coral); }
+    #typeAnswerBox {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      max-width: 320px;
+    }
+    .type-answer-row {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+    }
+    #typeAnswerInput {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--paper);
+      font-size: 13px;
+      font-family: inherit;
+      text-align: center;
+    }
+    #typeAnswerInput::placeholder { color: var(--text-tertiary); }
+    #typeAnswerInput:focus { outline: none; border-color: var(--gold); }
+    #typeAnswerSubmit {
+      background: var(--gold);
+      color: var(--gold-ink);
+      border: none;
+      border-radius: 20px;
+      padding: 8px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    #typeAnswerSubmit:hover { filter: brightness(1.08); }
+    #typeAnswerGiveUp {
+      all: unset;
+      cursor: pointer;
+      font-size: 10.5px;
+      color: var(--text-tertiary);
+      text-decoration: underline;
+    }
+    #typeAnswerGiveUp:hover { color: var(--paper); }
+    #typeAnswerFeedback {
+      display: none;
+      font-size: 12.5px;
+      font-weight: 500;
+      max-width: 320px;
+    }
+    #typeAnswerFeedback.correct { display: block; color: var(--mint); }
+    #typeAnswerFeedback.incorrect { display: block; color: var(--coral); }
     #hint {
       font-family: "IBM Plex Mono", monospace;
       font-size: 10.5px;
@@ -654,6 +726,10 @@
       <label><input type="checkbox" class="lvl-cb" value="5" checked />L5</label>
     </span>
     <button id="startBtn">Go</button>
+    <label id="modeToggle" title="Show the translation and type the English word yourself, instead of tapping to reveal it">
+      <input type="checkbox" id="typeAnswerToggle" />
+      ⌨ Type the word
+    </label>
   </div>
   <div id="progress"></div>
 
@@ -680,6 +756,14 @@
         <div id="translation"></div>
         <div id="context"></div>
         <div id="notes"></div>
+        <div id="typeAnswerBox">
+          <div class="type-answer-row">
+            <input id="typeAnswerInput" type="text" placeholder="Type the English word…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+            <button id="typeAnswerSubmit" type="button">Check</button>
+          </div>
+          <button id="typeAnswerGiveUp" type="button">Show answer instead</button>
+        </div>
+        <div id="typeAnswerFeedback"></div>
         <div id="hint">Click the card to reveal the translation</div>
       </div>
       <div id="controls">

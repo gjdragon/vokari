@@ -3,6 +3,12 @@ const wordEl = document.getElementById("word");
 const translationEl = document.getElementById("translation");
 const contextEl = document.getElementById("context");
 const wordNotesEl = document.getElementById("notes");
+const typeAnswerToggleEl = document.getElementById("typeAnswerToggle");
+const typeAnswerBoxEl = document.getElementById("typeAnswerBox");
+const typeAnswerInputEl = document.getElementById("typeAnswerInput");
+const typeAnswerSubmitEl = document.getElementById("typeAnswerSubmit");
+const typeAnswerGiveUpEl = document.getElementById("typeAnswerGiveUp");
+const typeAnswerFeedbackEl = document.getElementById("typeAnswerFeedback");
 const hintEl = document.getElementById("hint");
 const controlsEl = document.getElementById("controls");
 const navRowEl = document.getElementById("navRow");
@@ -41,6 +47,7 @@ const LEVEL_LABEL = { 1: "Monthly", 2: "Every 2 weeks", 3: "Weekly", 4: "Every 3
 let queue = [];       // fixed list for this session — Prev/Next just move the pointer
 let index = 0;
 let revealed = false;
+let typeAnswerMode = false; // loaded from settings; "show translation, type the word" instead of tap-to-reveal
 let graded = new Map(); // key -> { remembered, level, interval } for cards graded this session
 let autoGenerateEnabled = false; // loaded from settings before the first card shows
 let sentenceRequestToken = 0;   // guards against a stale async response overwriting a newer card
@@ -74,9 +81,20 @@ scopeEl.addEventListener("change", () => {
 document.getElementById("startBtn").addEventListener("click", loadQueue);
 
 async function loadSettings() {
-  const { autoGenerateSentence } = await chrome.storage.local.get("autoGenerateSentence");
+  const { autoGenerateSentence, typeAnswerMode: storedTypeAnswerMode } = await chrome.storage.local.get([
+    "autoGenerateSentence",
+    "typeAnswerMode",
+  ]);
   autoGenerateEnabled = !!autoGenerateSentence;
+  typeAnswerMode = !!storedTypeAnswerMode;
+  typeAnswerToggleEl.checked = typeAnswerMode;
 }
+
+typeAnswerToggleEl.addEventListener("change", () => {
+  typeAnswerMode = typeAnswerToggleEl.checked;
+  chrome.storage.local.set({ typeAnswerMode });
+  if (queue.length > 0) showCurrent();
+});
 
 async function loadQueue() {
   lastResultEl.textContent = "";
@@ -113,14 +131,37 @@ function showCurrent() {
   const result = graded.get(key);
   revealed = !!result; // an already-graded card reopens revealed, so you can glance at it
 
+  // "Type the word" mode: the translation is shown as the prompt and the English
+  // word stays hidden until the person types it (or gives up) — only applies to
+  // cards not yet graded this session; a graded card always reopens fully revealed.
+  const typing = typeAnswerMode && !result;
+
   wordEl.textContent = entry.word;
+  wordEl.classList.remove("correct", "incorrect");
   translationEl.textContent = entry.translation;
-  translationEl.classList.toggle("revealed", revealed);
-  translationEl.style.display = revealed ? "block" : "none";
-  contextEl.textContent = entry.context || "";
+  typeAnswerInputEl.value = "";
+  typeAnswerFeedbackEl.textContent = "";
+  typeAnswerFeedbackEl.className = "";
+
+  if (typing) {
+    wordEl.style.visibility = "hidden";
+    translationEl.classList.remove("revealed");
+    translationEl.style.display = "block"; // the translation IS the prompt in this mode
+    contextEl.textContent = ""; // the saved context sentence contains the word itself — would give it away
+    wordNotesEl.classList.remove("revealed");
+    typeAnswerBoxEl.style.display = "flex";
+    hintEl.style.display = "none";
+  } else {
+    wordEl.style.visibility = "visible";
+    translationEl.classList.toggle("revealed", revealed);
+    translationEl.style.display = revealed ? "block" : "none";
+    contextEl.textContent = entry.context || "";
+    typeAnswerBoxEl.style.display = "none";
+    hintEl.style.display = revealed ? "none" : "block";
+  }
   wordNotesEl.textContent = entry.notes || "";
   wordNotesEl.classList.toggle("revealed", revealed && !!entry.notes);
-  hintEl.style.display = revealed ? "none" : "block";
+
   cardEl.style.display = "flex";
   controlsEl.style.display = "flex";
   emptyEl.style.display = "none";
@@ -149,6 +190,8 @@ function showCurrent() {
   nextBtn.disabled = index === queue.length - 1;
 
   progressEl.textContent = `${index + 1} of ${queue.length}`;
+
+  if (typing) typeAnswerInputEl.focus();
 
   showSentenceForCurrent();
   showPracticeForCurrent();
@@ -496,13 +539,19 @@ practiceHistoryToggle.addEventListener("click", () => {
 
 cardEl.addEventListener("click", () => {
   if (revealed) return;
+  const entry = current();
+  if (typeAnswerMode) {
+    // In type-the-word mode, clicking the card is the "give up" path — same
+    // outcome as the explicit "Show answer instead" link.
+    revealAfterTyping(entry, false, typeAnswerInputEl.value.trim(), true);
+    return;
+  }
   revealed = true;
   translationEl.classList.add("revealed");
   translationEl.style.display = "block";
   hintEl.style.display = "none";
   document.getElementById("knewIt").style.display = "none";
   gradeRowEl.style.display = "flex";
-  const entry = current();
   wordNotesEl.classList.toggle("revealed", !!entry.notes);
 });
 
@@ -510,6 +559,63 @@ speakBtn.addEventListener("click", (e) => {
   e.stopPropagation(); // don't let this also trigger the card's reveal-on-click
   const entry = current();
   speak(entry.word, entry.sourceLang || undefined);
+});
+
+// --- "Type the word" mode: check the typed answer against the real word ---
+
+function normalizeWord(str) {
+  return str.trim().toLowerCase();
+}
+
+function revealAfterTyping(entry, isCorrect, typed, gaveUp) {
+  revealed = true;
+  wordEl.style.visibility = "visible";
+  wordEl.classList.toggle("correct", isCorrect);
+  wordEl.classList.toggle("incorrect", !isCorrect);
+  translationEl.classList.add("revealed");
+  contextEl.textContent = entry.context || "";
+  wordNotesEl.classList.toggle("revealed", !!entry.notes);
+  typeAnswerBoxEl.style.display = "none";
+  hintEl.style.display = "none";
+
+  typeAnswerFeedbackEl.className = isCorrect ? "correct" : "incorrect";
+  if (isCorrect) {
+    typeAnswerFeedbackEl.textContent = "✅ Correct!";
+  } else if (gaveUp && !typed) {
+    typeAnswerFeedbackEl.textContent = `The word is "${entry.word}"`;
+  } else {
+    typeAnswerFeedbackEl.textContent = `❌ You typed "${typed}" — the word is "${entry.word}"`;
+  }
+
+  document.getElementById("knewIt").style.display = "none";
+  gradeRowEl.style.display = "flex";
+}
+
+function checkTypedAnswer() {
+  if (revealed) return;
+  const entry = current();
+  const typed = typeAnswerInputEl.value.trim();
+  if (!typed) {
+    typeAnswerInputEl.focus();
+    return;
+  }
+  const isCorrect = normalizeWord(typed) === normalizeWord(entry.word);
+  revealAfterTyping(entry, isCorrect, typed, false);
+}
+
+typeAnswerSubmitEl.addEventListener("click", (e) => {
+  e.stopPropagation();
+  checkTypedAnswer();
+});
+typeAnswerGiveUpEl.addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (revealed) return;
+  revealAfterTyping(current(), false, typeAnswerInputEl.value.trim(), true);
+});
+typeAnswerInputEl.addEventListener("click", (e) => e.stopPropagation());
+typeAnswerInputEl.addEventListener("keydown", (e) => {
+  e.stopPropagation(); // don't let Enter/arrows bubble to the document-level shortcuts
+  if (e.key === "Enter") checkTypedAnswer();
 });
 
 function grade(remembered) {
@@ -549,6 +655,8 @@ document.getElementById("forgot").addEventListener("click", () => grade(false));
 document.getElementById("remembered").addEventListener("click", () => grade(true));
 
 document.addEventListener("keydown", (e) => {
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") return;
   if (e.key === "ArrowLeft") goPrev();
   else if (e.key === "ArrowRight") goNext();
 });
