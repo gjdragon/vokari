@@ -273,6 +273,22 @@
       color: var(--text-tertiary);
       max-width: 320px;
     }
+    #notes {
+      display: none;
+      font-size: 12px;
+      color: var(--text-secondary);
+      max-width: 320px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 11px;
+      white-space: pre-wrap;
+      text-align: left;
+    }
+    #notes.revealed {
+      display: block;
+      animation: vk-fadein 0.35s ease 0.18s both;
+    }
     #hint {
       font-family: "IBM Plex Mono", monospace;
       font-size: 10.5px;
@@ -663,6 +679,7 @@
         <div id="word"></div>
         <div id="translation"></div>
         <div id="context"></div>
+        <div id="notes"></div>
         <div id="hint">Click the card to reveal the translation</div>
       </div>
       <div id="controls">

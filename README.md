@@ -46,6 +46,7 @@ Highlight any word/phrase on a webpage → see a translation popup → click Sav
 - Data is stored locally in `chrome.storage.local` — it stays on your machine and isn't synced across devices. If you want cross-device sync, switch to `chrome.storage.sync` (has a smaller size quota, ~100KB) or add a real backend.
 - The word length filter (in `content.js`) skips selections longer than 60 characters, to avoid triggering on full paragraphs. Adjust as needed.
 - Each saved entry stores the word, translation, source language, target language, a snippet of surrounding context, the source URL, and a timestamp — useful later if you want to build flashcards with real usage examples.
+- **Editing a word** — click **✎ edit** on any entry in the popup list to correct the meaning or add freeform notes (similar words, common usage, whatever helps it stick). Notes show up as a small preview in the list, and appear alongside the translation on the review card once you reveal it. Notes are included in CSV export and in Export/Import (Sync), same as everything else.
 
 ## Daily flashcard review (5-level system)
 

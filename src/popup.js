@@ -119,12 +119,28 @@ function render(filter = "") {
     div.className = `entry ${bucket}`;
     const date = new Date(entry.savedAt).toLocaleDateString();
     div.innerHTML = `
-      <span class="del" data-word="${entry.word}" data-time="${entry.savedAt}">✕ remove</span>
+      <span class="del" data-word="${escapeHtml(entry.word)}" data-time="${entry.savedAt}">✕ remove</span>
+      <span class="edit-toggle" data-word="${escapeHtml(entry.word)}" data-time="${entry.savedAt}" title="Edit meaning & add notes">✎ edit</span>
       <span class="lvl-badge" title="Review level ${level}/5">L${level}</span>
-      <span class="speak" title="Hear pronunciation" data-word="${entry.word}" data-lang="${entry.sourceLang || ""}">🔊</span>
-      <div class="word">${entry.word}</div>
-      <div class="translation">${entry.translation}</div>
+      <span class="speak" title="Hear pronunciation" data-word="${escapeHtml(entry.word)}" data-lang="${entry.sourceLang || ""}">🔊</span>
+      <div class="word">${escapeHtml(entry.word)}</div>
+      <div class="translation">${escapeHtml(entry.translation)}</div>
       <div class="meta">${date}${entry.context ? " · " + truncate(entry.context, 60) : ""}</div>
+      ${entry.notes ? `<div class="notes-preview">📝 ${escapeHtml(truncate(entry.notes, 140))}</div>` : ""}
+      <div class="edit-form" data-word="${escapeHtml(entry.word)}" data-time="${entry.savedAt}">
+        <label>
+          Meaning
+          <input type="text" class="edit-translation" value="${escapeHtml(entry.translation)}" />
+        </label>
+        <label>
+          Notes <span class="field-hint">(similar words, common uses, examples — anything that helps it stick)</span>
+          <textarea class="edit-notes" rows="3" placeholder="e.g. similar to 'ubiquitous', often paired with 'presence'…">${escapeHtml(entry.notes || "")}</textarea>
+        </label>
+        <div class="edit-actions">
+          <button type="button" class="edit-cancel">Cancel</button>
+          <button type="button" class="edit-save">Save</button>
+        </div>
+      </div>
     `;
     listEl.appendChild(div);
   });
@@ -161,6 +177,95 @@ function render(filter = "") {
       speak(btn.getAttribute("data-word"), btn.getAttribute("data-lang") || undefined);
     });
   });
+
+  // --- inline edit (meaning + freeform notes) ---
+  listEl.querySelectorAll(".edit-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const form = findEditForm(btn);
+      const willOpen = !form.classList.contains("open");
+      // Only one edit form open at a time.
+      listEl.querySelectorAll(".edit-form.open").forEach((f) => f.classList.remove("open"));
+      listEl.querySelectorAll(".edit-toggle.active").forEach((b) => b.classList.remove("active"));
+      if (willOpen) {
+        form.classList.add("open");
+        btn.classList.add("active");
+        form.querySelector(".edit-translation").focus();
+      }
+    });
+  });
+
+  listEl.querySelectorAll(".edit-cancel").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const form = btn.closest(".edit-form");
+      form.classList.remove("open");
+      const toggle = form.parentElement.querySelector(".edit-toggle");
+      if (toggle) toggle.classList.remove("active");
+    });
+  });
+
+  listEl.querySelectorAll(".edit-save").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const form = btn.closest(".edit-form");
+      const word = form.getAttribute("data-word");
+      const time = Number(form.getAttribute("data-time"));
+      const newTranslation = form.querySelector(".edit-translation").value.trim();
+      const newNotes = form.querySelector(".edit-notes").value.trim();
+
+      if (!newTranslation) {
+        form.querySelector(".edit-translation").focus();
+        return;
+      }
+
+      const target = library.find((e) => e.word === word && e.savedAt === time);
+      if (!target) return;
+
+      const oldKey = entryKey(target);
+      target.translation = newTranslation;
+      target.notes = newNotes;
+      const newKey = entryKey(target);
+      const updates = { library };
+
+      // If the meaning changed, the cache key (word+translation) changed too —
+      // carry any saved example sentences / writing-practice history over to
+      // the new key so editing the meaning doesn't orphan that history.
+      if (oldKey !== newKey) {
+        const stillUsed = library.some((e) => e !== target && entryKey(e) === oldKey);
+        if (!stillUsed) {
+          const { sentenceCache = {}, userSentenceCache = {} } = await chrome.storage.local.get([
+            "sentenceCache",
+            "userSentenceCache",
+          ]);
+          if (sentenceCache[oldKey]) {
+            sentenceCache[newKey] = (sentenceCache[newKey] || []).concat(sentenceCache[oldKey]);
+            delete sentenceCache[oldKey];
+          }
+          if (userSentenceCache[oldKey]) {
+            userSentenceCache[newKey] = (userSentenceCache[newKey] || []).concat(userSentenceCache[oldKey]);
+            delete userSentenceCache[oldKey];
+          }
+          updates.sentenceCache = sentenceCache;
+          updates.userSentenceCache = userSentenceCache;
+        }
+      }
+
+      await chrome.storage.local.set(updates);
+      render(searchEl.value);
+      renderReviewBanner();
+    });
+  });
+}
+
+function findEditForm(editToggleBtn) {
+  return editToggleBtn.parentElement.querySelector(".edit-form");
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function truncate(str, n) {
@@ -183,9 +288,9 @@ document.getElementById("clearAll").addEventListener("click", async () => {
 });
 
 document.getElementById("exportCsv").addEventListener("click", () => {
-  const rows = [["Word", "Translation", "Context", "URL", "Date"]];
+  const rows = [["Word", "Translation", "Notes", "Context", "URL", "Date"]];
   library.forEach((e) =>
-    rows.push([e.word, e.translation, e.context || "", e.url || "", new Date(e.savedAt).toISOString()])
+    rows.push([e.word, e.translation, e.notes || "", e.context || "", e.url || "", new Date(e.savedAt).toISOString()])
   );
   const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
   downloadFile(csv, "vocabulary.csv", "text/csv");
@@ -377,6 +482,7 @@ function pickFurtherAlong(a, b) {
   const other = keeper === a ? b : a;
   if (!keeper.context && other.context) keeper.context = other.context;
   if (!keeper.url && other.url) keeper.url = other.url;
+  if (!keeper.notes && other.notes) keeper.notes = other.notes;
   return keeper;
 }
 

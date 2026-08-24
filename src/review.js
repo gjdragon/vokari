@@ -2,6 +2,7 @@ const cardEl = document.getElementById("card");
 const wordEl = document.getElementById("word");
 const translationEl = document.getElementById("translation");
 const contextEl = document.getElementById("context");
+const wordNotesEl = document.getElementById("notes");
 const hintEl = document.getElementById("hint");
 const controlsEl = document.getElementById("controls");
 const navRowEl = document.getElementById("navRow");
@@ -117,6 +118,8 @@ function showCurrent() {
   translationEl.classList.toggle("revealed", revealed);
   translationEl.style.display = revealed ? "block" : "none";
   contextEl.textContent = entry.context || "";
+  wordNotesEl.textContent = entry.notes || "";
+  wordNotesEl.classList.toggle("revealed", revealed && !!entry.notes);
   hintEl.style.display = revealed ? "none" : "block";
   cardEl.style.display = "flex";
   controlsEl.style.display = "flex";
@@ -499,6 +502,8 @@ cardEl.addEventListener("click", () => {
   hintEl.style.display = "none";
   document.getElementById("knewIt").style.display = "none";
   gradeRowEl.style.display = "flex";
+  const entry = current();
+  wordNotesEl.classList.toggle("revealed", !!entry.notes);
 });
 
 speakBtn.addEventListener("click", (e) => {
