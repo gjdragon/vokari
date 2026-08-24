@@ -137,7 +137,7 @@ function showCurrent() {
     } ${arrow} level ${result.level}/5`;
   } else {
     navRowEl.style.display = "flex";
-    document.getElementById("knewIt").style.display = "inline-block";
+    document.getElementById("knewIt").style.display = revealed ? "none" : "inline-block";
     gradeRowEl.style.display = revealed ? "flex" : "none";
     alreadyGradedEl.style.display = "none";
   }
@@ -497,6 +497,7 @@ cardEl.addEventListener("click", () => {
   translationEl.classList.add("revealed");
   translationEl.style.display = "block";
   hintEl.style.display = "none";
+  document.getElementById("knewIt").style.display = "none";
   gradeRowEl.style.display = "flex";
 });
 

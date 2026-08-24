@@ -122,6 +122,34 @@
       gap: 1px;
     }
     .dropdown-menu.open { display: flex; }
+    .gemini-panel {
+      width: 280px;
+      min-width: 280px;
+      padding: 12px 14px 14px;
+      gap: 0;
+    }
+    .gemini-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .gemini-panel-header span {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gold);
+    }
+    .gemini-panel-header button {
+      all: unset;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      font-size: 13px;
+      line-height: 1;
+      padding: 2px 4px;
+    }
+    .gemini-panel-header button:hover { color: var(--paper); }
     .menu-item {
       all: unset;
       box-sizing: border-box;
@@ -281,25 +309,17 @@
       font-size: 11.5px;
       color: var(--mint);
     }
-    #settingsPanel {
-      margin: 0 14px 14px;
+    .gemini-panel {
       font-size: 12px;
       color: var(--text-secondary);
     }
-    #settingsPanel summary {
-      cursor: pointer;
-      color: var(--gold);
-      font-weight: 500;
-      font-size: 11.5px;
-    }
-    #settingsPanel summary:hover { color: var(--paper); }
-    #settingsPanel label {
+    .gemini-panel label {
       font-size: 11px;
       display: block;
       color: var(--text-secondary);
     }
-    #settingsPanel input[type="text"],
-    #settingsPanel input[type="password"] {
+    .gemini-panel input[type="text"],
+    .gemini-panel input[type="password"] {
       width: 100%;
       box-sizing: border-box;
       margin-top: 4px;
@@ -311,22 +331,21 @@
       font-size: 12px;
       font-family: inherit;
     }
-    #settingsPanel input[type="text"]:focus,
-    #settingsPanel input[type="password"]:focus { outline: none; border-color: var(--gold); }
-    #settingsPanel .settings-body {
-      margin-top: 10px;
+    .gemini-panel input[type="text"]:focus,
+    .gemini-panel input[type="password"]:focus { outline: none; border-color: var(--gold); }
+    .gemini-panel .settings-body {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    #settingsPanel .checkbox-row {
+    .gemini-panel .checkbox-row {
       font-size: 11px;
       display: flex;
       align-items: center;
       gap: 6px;
       cursor: pointer;
     }
-    #settingsPanel .fine-print {
+    .gemini-panel .fine-print {
       font-size: 10px;
       color: var(--text-tertiary);
       line-height: 1.5;
@@ -353,8 +372,10 @@
         <option value="ar">العربية</option>
       </select>
       <div class="menu-wrap">
-        <button id="menuToggle" class="icon-btn" title="Export, import & clear">⋯</button>
+        <button id="menuToggle" class="icon-btn" title="Menu">⋯</button>
         <div id="dataMenu" class="dropdown-menu">
+          <button id="openGeminiSettings" class="menu-item">✨ Gemini API settings</button>
+          <div class="menu-divider"></div>
           <button id="exportCsv" class="menu-item">⬇ Export CSV</button>
           <button id="exportAnki" class="menu-item">⬇ Export Anki</button>
           <div class="menu-divider"></div>
@@ -363,6 +384,29 @@
           <input id="importJsonFile" type="file" accept="application/json" style="display:none;" />
           <div class="menu-divider"></div>
           <button id="clearAll" class="menu-item menu-item-danger">🗑 Clear all</button>
+        </div>
+        <div id="geminiPanel" class="dropdown-menu gemini-panel">
+          <div class="gemini-panel-header">
+            <span>✨ Sentence practice (Gemini API)</span>
+            <button id="closeGeminiSettings" title="Close">✕</button>
+          </div>
+          <div class="settings-body">
+            <label>
+              Gemini API key
+              <input id="geminiApiKey" type="password" placeholder="Paste your Gemini API key" autocomplete="off" />
+            </label>
+            <label>
+              Model (optional)
+              <input id="geminiModel" type="text" placeholder="gemini-3.6-flash" />
+            </label>
+            <label class="checkbox-row">
+              <input id="autoGenerateSentence" type="checkbox" />
+              Auto-generate a sentence when opening each review card
+            </label>
+            <span class="fine-print">
+              Used by the ✨ buttons on the review page — both the example-sentence generator and the writing-practice polish tool — to call Gemini with your saved words. Stored locally in this browser; sent only to Google's Gemini API when a sentence is generated or polished. Leave auto-generate off to only call the API when you click a button yourself — it saves the wait on cards you don't need it for. Sentences and writing-practice attempts are saved per word (up to 8 each, oldest non-favorite dropped first) so you can revisit them later, and they're included in Export/Import (Sync) above.
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -377,26 +421,6 @@
   <div id="importStatus"></div>
   <div id="list"></div>
   <div id="empty" style="display:none;">No words saved yet. Highlight a word on any page to get started.</div>
-  <details id="settingsPanel">
-    <summary>✨ Sentence practice settings (Gemini API)</summary>
-    <div class="settings-body">
-      <label>
-        Gemini API key
-        <input id="geminiApiKey" type="password" placeholder="Paste your Gemini API key" autocomplete="off" />
-      </label>
-      <label>
-        Model (optional)
-        <input id="geminiModel" type="text" placeholder="gemini-3.6-flash" />
-      </label>
-      <label class="checkbox-row">
-        <input id="autoGenerateSentence" type="checkbox" />
-        Auto-generate a sentence when opening each review card
-      </label>
-      <span class="fine-print">
-        Used by the ✨ buttons on the review page — both the example-sentence generator and the writing-practice polish tool — to call Gemini with your saved words. Stored locally in this browser; sent only to Google's Gemini API when a sentence is generated or polished. Leave auto-generate off to only call the API when you click a button yourself — it saves the wait on cards you don't need it for. Sentences and writing-practice attempts are saved per word (up to 8 each, oldest non-favorite dropped first) so you can revisit them later, and they're included in Export/Import (Sync) above.
-      </span>
-    </div>
-  </details>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -59,13 +59,21 @@ document.getElementById("startReview").addEventListener("click", () => {
 // --- data menu (export/import/clear dropdown) ---
 const menuToggle = document.getElementById("menuToggle");
 const dataMenu = document.getElementById("dataMenu");
+const geminiPanel = document.getElementById("geminiPanel");
+const openGeminiSettings = document.getElementById("openGeminiSettings");
+const closeGeminiSettings = document.getElementById("closeGeminiSettings");
+
 menuToggle.addEventListener("click", (e) => {
   e.stopPropagation();
+  geminiPanel.classList.remove("open");
   dataMenu.classList.toggle("open");
 });
 document.addEventListener("click", (e) => {
   if (dataMenu.classList.contains("open") && !dataMenu.contains(e.target) && e.target !== menuToggle) {
     dataMenu.classList.remove("open");
+  }
+  if (geminiPanel.classList.contains("open") && !geminiPanel.contains(e.target) && e.target !== menuToggle) {
+    geminiPanel.classList.remove("open");
   }
 });
 dataMenu.querySelectorAll(".menu-item").forEach((btn) => {
@@ -74,6 +82,14 @@ dataMenu.querySelectorAll(".menu-item").forEach((btn) => {
     setTimeout(() => dataMenu.classList.remove("open"), 30);
   });
 });
+
+// --- Gemini API settings panel (opened from the ⋯ menu) ---
+openGeminiSettings.addEventListener("click", (e) => {
+  e.stopPropagation();
+  dataMenu.classList.remove("open");
+  geminiPanel.classList.add("open");
+});
+closeGeminiSettings.addEventListener("click", () => geminiPanel.classList.remove("open"));
 
 function speak(text, lang) {
   if (!("speechSynthesis" in window)) return;
