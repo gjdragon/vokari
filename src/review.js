@@ -20,6 +20,17 @@ const progressEl = document.getElementById("progress");
 const emptyEl = document.getElementById("empty");
 const levelBadgeEl = document.getElementById("levelBadge");
 const speakBtn = document.getElementById("speakBtn");
+const editBtn = document.getElementById("editBtn");
+const editOverlay = document.getElementById("editOverlay");
+const editTranslationInput = document.getElementById("editTranslationInput");
+const editNotesInput = document.getElementById("editNotesInput");
+const editOverlayError = document.getElementById("editOverlayError");
+const editSaveBtn = document.getElementById("editSaveBtn");
+const editCancelBtn = document.getElementById("editCancelBtn");
+const sentenceCol = document.getElementById("sentenceCol");
+const practiceCol = document.getElementById("practiceCol");
+const sentenceColToggle = document.getElementById("sentenceColToggle");
+const practiceColToggle = document.getElementById("practiceColToggle");
 const lastResultEl = document.getElementById("lastResult");
 const scopeEl = document.getElementById("scope");
 const amountEl = document.getElementById("amount");
@@ -81,14 +92,42 @@ scopeEl.addEventListener("change", () => {
 document.getElementById("startBtn").addEventListener("click", loadQueue);
 
 async function loadSettings() {
-  const { autoGenerateSentence, typeAnswerMode: storedTypeAnswerMode } = await chrome.storage.local.get([
+  const {
+    autoGenerateSentence,
+    typeAnswerMode: storedTypeAnswerMode,
+    hideSentencePanel,
+    hidePracticePanel,
+  } = await chrome.storage.local.get([
     "autoGenerateSentence",
     "typeAnswerMode",
+    "hideSentencePanel",
+    "hidePracticePanel",
   ]);
   autoGenerateEnabled = !!autoGenerateSentence;
   typeAnswerMode = !!storedTypeAnswerMode;
   typeAnswerToggleEl.checked = typeAnswerMode;
+  setPanelCollapsed(sentenceCol, sentenceColToggle, "AI Example", !!hideSentencePanel);
+  setPanelCollapsed(practiceCol, practiceColToggle, "Your Practice", !!hidePracticePanel);
 }
+
+// --- Show/hide the side panels (AI Example / Your Practice) ---
+function setPanelCollapsed(colEl, toggleBtn, label, collapsed) {
+  colEl.classList.toggle("collapsed", collapsed);
+  toggleBtn.textContent = collapsed ? "»" : "✕";
+  toggleBtn.title = collapsed ? `Show ${label} panel` : `Hide ${label} panel`;
+}
+
+sentenceColToggle.addEventListener("click", () => {
+  const collapsed = !sentenceCol.classList.contains("collapsed");
+  setPanelCollapsed(sentenceCol, sentenceColToggle, "AI Example", collapsed);
+  chrome.storage.local.set({ hideSentencePanel: collapsed });
+});
+
+practiceColToggle.addEventListener("click", () => {
+  const collapsed = !practiceCol.classList.contains("collapsed");
+  setPanelCollapsed(practiceCol, practiceColToggle, "Your Practice", collapsed);
+  chrome.storage.local.set({ hidePracticePanel: collapsed });
+});
 
 typeAnswerToggleEl.addEventListener("change", () => {
   typeAnswerMode = typeAnswerToggleEl.checked;
@@ -113,6 +152,7 @@ function current() {
 }
 
 function showCurrent() {
+  editOverlay.classList.remove("open");
   if (queue.length === 0) {
     cardEl.style.display = "none";
     controlsEl.style.display = "none";
@@ -561,6 +601,58 @@ speakBtn.addEventListener("click", (e) => {
   speak(entry.word, entry.sourceLang || undefined);
 });
 
+// --- Edit meaning / notes directly from the review card ---
+editBtn.addEventListener("click", (e) => {
+  e.stopPropagation(); // don't trigger the card's reveal-on-click
+  if (queue.length === 0) return;
+  const entry = current();
+  editTranslationInput.value = entry.translation;
+  editNotesInput.value = entry.notes || "";
+  editOverlayError.style.display = "none";
+  editOverlay.classList.add("open");
+  editTranslationInput.focus();
+});
+
+editOverlay.addEventListener("click", (e) => e.stopPropagation()); // don't let clicks inside reveal the card
+
+editCancelBtn.addEventListener("click", () => {
+  editOverlay.classList.remove("open");
+});
+
+editSaveBtn.addEventListener("click", () => {
+  if (queue.length === 0) return;
+  const entry = current();
+  const newTranslation = editTranslationInput.value.trim();
+  const newNotes = editNotesInput.value.trim();
+
+  if (!newTranslation) {
+    editOverlayError.textContent = "Meaning can't be empty.";
+    editOverlayError.style.display = "block";
+    editTranslationInput.focus();
+    return;
+  }
+
+  const key = keyFor(entry);
+  editSaveBtn.disabled = true;
+  chrome.runtime.sendMessage(
+    { type: "EDIT_WORD_ENTRY", key, translation: newTranslation, notes: newNotes },
+    (res) => {
+      editSaveBtn.disabled = false;
+      if (!res || !res.ok) {
+        editOverlayError.textContent = (res && res.error) || "Something went wrong saving your edit.";
+        editOverlayError.style.display = "block";
+        return;
+      }
+      // Update the in-memory queue entry so the rest of the session (and this
+      // card's re-render) reflects the edit without needing to reload the queue.
+      entry.translation = newTranslation;
+      entry.notes = newNotes;
+      editOverlay.classList.remove("open");
+      showCurrent();
+    }
+  );
+});
+
 // --- "Type the word" mode: check the typed answer against the real word ---
 
 function normalizeWord(str) {
@@ -655,8 +747,13 @@ document.getElementById("forgot").addEventListener("click", () => grade(false));
 document.getElementById("remembered").addEventListener("click", () => grade(true));
 
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && editOverlay.classList.contains("open")) {
+    editOverlay.classList.remove("open");
+    return;
+  }
   const tag = (e.target.tagName || "").toLowerCase();
   if (tag === "input" || tag === "textarea" || tag === "select") return;
+  if (editOverlay.classList.contains("open")) return; // don't navigate cards while editing
   if (e.key === "ArrowLeft") goPrev();
   else if (e.key === "ArrowRight") goNext();
 });

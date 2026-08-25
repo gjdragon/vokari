@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Edit meaning/notes directly from the review card (✎ button on the flashcard) without leaving the review session — same underlying edit as the popup's inline editor, including safe carry-over of cached AI sentences/writing-practice history if the meaning changes.
+- Show/hide controls for the AI Example (left) and Your Practice (right) side panels on the review page, so the flashcard can be reviewed without the extra columns. State persists across sessions.
+
 ## [1.0.0] - 2026-08-23
 
 Initial public release.

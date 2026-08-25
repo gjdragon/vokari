@@ -188,6 +188,15 @@
       align-items: center;
       padding: 2px 2px 10px;
     }
+    .col-heading-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+      width: 100%;
+    }
     .col-heading {
       font-family: "IBM Plex Mono", monospace;
       font-size: 10px;
@@ -195,8 +204,36 @@
       letter-spacing: 0.08em;
       color: var(--text-tertiary);
       text-align: center;
-      margin-bottom: 10px;
+    }
+    .col-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-tertiary);
+      border-radius: 6px;
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      font-size: 11px;
+      line-height: 1;
+      cursor: pointer;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .col-toggle:hover { color: var(--paper); border-color: var(--text-secondary); }
+    .col-side.collapsed {
+      flex: 0 0 40px;
+      max-width: 40px;
+      padding: 14px 4px;
+      align-items: center;
+    }
+    .col-side.collapsed { overflow: hidden; }
+    .col-side.collapsed .col-heading-row { margin-bottom: 0; }
+    .col-side.collapsed .col-heading,
+    .col-side.collapsed #sentencePanel,
+    .col-side.collapsed #practicePanel {
+      display: none;
     }
 
     #card {
@@ -246,6 +283,89 @@
       color: var(--paper);
     }
     #speakBtn:hover { background: var(--surface-raised); }
+    #editBtn {
+      position: absolute;
+      top: 52px;
+      left: 14px;
+      font-size: 13px;
+      background: var(--ink-900);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      color: var(--paper);
+    }
+    #editBtn:hover { background: var(--surface-raised); }
+    #editOverlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 20px;
+      flex-direction: column;
+      gap: 10px;
+      cursor: default;
+      z-index: 5;
+      text-align: left;
+    }
+    #editOverlay.open { display: flex; }
+    #editOverlay label {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    #editOverlay input,
+    #editOverlay textarea {
+      background: var(--ink-900);
+      color: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: "Inter", sans-serif;
+      text-transform: none;
+      letter-spacing: normal;
+      resize: vertical;
+    }
+    #editOverlay input:focus,
+    #editOverlay textarea:focus { outline: none; border-color: var(--gold); }
+    #editOverlayTitle {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--paper);
+    }
+    #editOverlayActions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: auto;
+    }
+    #editOverlayActions button {
+      border: none;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    #editCancelBtn { background: var(--ink-900); border: 1px solid var(--border); color: var(--paper); }
+    #editCancelBtn:hover { background: var(--surface-raised); }
+    #editSaveBtn { background: var(--gold); color: var(--gold-ink); }
+    #editSaveBtn:hover { filter: brightness(1.08); }
+    #editOverlayError {
+      display: none;
+      font-size: 11.5px;
+      color: var(--coral);
+    }
     #word {
       font-family: "Fraunces", Georgia, serif;
       font-size: 28px;
@@ -735,8 +855,11 @@
 
   <div id="reviewGrid">
     <div class="col col-side" id="sentenceCol">
-      <div class="col-heading">✨ AI Example</div>
-      <div id="sentencePanel">
+      <div class="col-heading-row">
+        <span class="col-heading">✨ AI Example</span>
+        <button class="col-toggle" id="sentenceColToggle" title="Hide this panel">✕</button>
+      </div>
+      <div id="sentencePanel" class="panel-body">
         <button id="sentenceBtn">✨ Make a sentence</button>
         <div id="sentenceBox">
           <button id="favoriteBtn" title="Save as favorite">☆</button>
@@ -752,6 +875,23 @@
       <div id="card" style="display:none;">
         <div id="levelBadge"></div>
         <button id="speakBtn" title="Hear pronunciation">🔊</button>
+        <button id="editBtn" title="Edit meaning / add notes">✎</button>
+        <div id="editOverlay">
+          <div id="editOverlayTitle">Edit word</div>
+          <label>
+            Meaning
+            <input type="text" id="editTranslationInput" />
+          </label>
+          <label>
+            Notes <span style="text-transform:none; letter-spacing:normal; color:var(--text-tertiary); font-size:10.5px;">(similar words, common usage, whatever helps it stick)</span>
+            <textarea id="editNotesInput" rows="3"></textarea>
+          </label>
+          <div id="editOverlayError"></div>
+          <div id="editOverlayActions">
+            <button type="button" id="editCancelBtn">Cancel</button>
+            <button type="button" id="editSaveBtn">Save</button>
+          </div>
+        </div>
         <div id="word"></div>
         <div id="translation"></div>
         <div id="context"></div>
@@ -782,8 +922,11 @@
     </div>
 
     <div class="col col-side" id="practiceCol">
-      <div class="col-heading">📝 Your Practice</div>
-      <div id="practicePanel">
+      <div class="col-heading-row">
+        <span class="col-heading">📝 Your Practice</span>
+        <button class="col-toggle" id="practiceColToggle" title="Hide this panel">✕</button>
+      </div>
+      <div id="practicePanel" class="panel-body">
         <div id="practiceIntro">Try writing your own sentence with "<span id="practiceWord"></span>"</div>
         <textarea id="practiceInput" rows="2" placeholder="Type a sentence using the word…"></textarea>
         <button id="practiceBtn">✨ Polish with AI</button>

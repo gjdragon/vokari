@@ -286,6 +286,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "EDIT_WORD_ENTRY") {
+    editWordEntry(message.key, message.translation, message.notes)
+      .then((result) => sendResponse({ ok: true, ...result }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
+
   if (message.type === "GENERATE_SENTENCE") {
     (async () => {
       try {
@@ -480,6 +487,49 @@ async function reviewCard(key, remembered) {
 
   await chrome.storage.local.set({ library });
   return { level: entry.level, interval: entry.interval };
+}
+
+// Edit a saved word's meaning/notes from anywhere (popup or the review card).
+// Mirrors the popup's inline-edit logic: entry identity (keyFor, used by the
+// review queue and REVIEW_CARD) is word+savedAt so it never changes here, but
+// the sentence-cache key (sentenceKeyFor, word+translation) does when the
+// meaning changes — so any cached AI sentences / writing-practice history are
+// carried over to the new key rather than orphaned.
+async function editWordEntry(key, translation, notes) {
+  const { library = [] } = await chrome.storage.local.get("library");
+  const entry = library.find((e) => keyFor(e) === key);
+  if (!entry) throw new Error("Word not found in library.");
+
+  const oldSentenceKey = sentenceKeyFor(entry);
+  entry.translation = translation;
+  entry.notes = notes;
+  const newSentenceKey = sentenceKeyFor(entry);
+  const updates = { library };
+
+  if (oldSentenceKey !== newSentenceKey) {
+    const stillUsed = library.some((e) => e !== entry && sentenceKeyFor(e) === oldSentenceKey);
+    if (!stillUsed) {
+      const { sentenceCache = {}, userSentenceCache = {} } = await chrome.storage.local.get([
+        "sentenceCache",
+        "userSentenceCache",
+      ]);
+      if (sentenceCache[oldSentenceKey]) {
+        sentenceCache[newSentenceKey] = (sentenceCache[newSentenceKey] || []).concat(sentenceCache[oldSentenceKey]);
+        delete sentenceCache[oldSentenceKey];
+      }
+      if (userSentenceCache[oldSentenceKey]) {
+        userSentenceCache[newSentenceKey] = (userSentenceCache[newSentenceKey] || []).concat(
+          userSentenceCache[oldSentenceKey]
+        );
+        delete userSentenceCache[oldSentenceKey];
+      }
+      updates.sentenceCache = sentenceCache;
+      updates.userSentenceCache = userSentenceCache;
+    }
+  }
+
+  await chrome.storage.local.set(updates);
+  return { translation: entry.translation, notes: entry.notes };
 }
 
 // --- Daily reminder ---
