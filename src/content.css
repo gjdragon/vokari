@@ -47,6 +47,30 @@
   font-style: italic;
 }
 
+#vk-popup .vk-editable {
+  color: #f4efe4;
+  border-bottom: 1px dashed #7d7460;
+  min-width: 60px;
+  outline: none;
+  cursor: text;
+}
+
+#vk-popup .vk-editable:empty::before {
+  content: attr(data-placeholder);
+  color: #7d7460;
+  font-style: italic;
+}
+
+#vk-popup .vk-editable.vk-error {
+  border-bottom-color: #f87171;
+}
+
+#vk-popup .vk-editable.vk-error:empty::before {
+  content: "Type a translation to save";
+  color: #f87171;
+  font-style: normal;
+}
+
 #vk-popup .vk-actions {
   display: flex;
   gap: 8px;

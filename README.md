@@ -1,6 +1,6 @@
 # Vokari — AI-powered vocabulary companion
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![Manifest](https://img.shields.io/badge/manifest-v3-informational)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
@@ -36,17 +36,18 @@ Highlight any word/phrase on a webpage → see a translation popup → click Sav
 
 1. Set your target language from the toolbar popup dropdown (defaults to Chinese).
 2. On any webpage, select/highlight an English word or short phrase.
-3. A small popup appears with the translation.
+3. A small popup appears with the translation. If auto-translate fails (rate-limited, network hiccup), the translation field becomes editable so you can paste or type one in yourself instead of losing the word.
 4. Click **Save** to add it to your library.
 5. Click the toolbar icon anytime to browse, search, delete, or export your saved words (CSV or Anki-import format).
+6. Fill in the rest of the word's template — **explanation**, **similar words**, **notes** — later from the ✎ edit button, either in the popup list or on the review card.
 
 ## Notes / things to know
 
-- Translation is done via Google's public (unofficial) translate endpoint — free, no API key, but not officially supported and rate-limited. If you hit rate limits or want a production-grade setup, swap the `translateText()` function in `background.js` for the official Cloud Translation API (needs a Google Cloud API key and billing).
+- Translation is done via Google's public (unofficial) translate endpoint — free, no API key, but not officially supported and rate-limited. If you hit rate limits or want a production-grade setup, swap the `translateText()` function in `background.js` for the official Cloud Translation API (needs a Google Cloud API key and billing). If a translation request fails for any reason, the popup lets you type or paste your own translation instead of blocking the save.
 - Data is stored locally in `chrome.storage.local` — it stays on your machine and isn't synced across devices. If you want cross-device sync, switch to `chrome.storage.sync` (has a smaller size quota, ~100KB) or add a real backend.
 - The word length filter (in `content.js`) skips selections longer than 60 characters, to avoid triggering on full paragraphs. Adjust as needed.
-- Each saved entry stores the word, translation, source language, target language, a snippet of surrounding context, the source URL, and a timestamp — useful later if you want to build flashcards with real usage examples.
-- **Editing a word** — click **✎ edit** on any entry in the popup list to correct the meaning or add freeform notes (similar words, common usage, whatever helps it stick). Notes show up as a small preview in the list, and appear alongside the translation on the review card once you reveal it. Notes are included in CSV export and in Export/Import (Sync), same as everything else.
+- **Word template** — every saved entry has six fields: **word**, **translation**, **explanation** (what it means, in English), **context** (the sentence you highlighted it from, captured automatically), **similar words** (synonyms/related terms), and **notes** (anything else — common usage, examples, whatever helps it stick). Word, translation, and context are filled in when you save; explanation, similar words, and notes are added afterward via **✎ edit** — either on an entry in the popup list or on the review card. There's no source-URL field — it was cut to keep entries compact.
+- **Editing a word** — click **✎ edit** on any entry in the popup list, or the ✎ button on the review card, to fill in or correct any of the template fields above. Explanation and similar-words previews show up in the popup list, and all four recall-aid fields (context, explanation, similar words, notes) can appear on the review card, subject to the "Show on card" toggles (see below). Everything here is included in CSV export and in Export/Import (Sync).
 
 ## Daily flashcard review (5-level system)
 
@@ -78,6 +79,13 @@ The card shows the word's current level (e.g. "Level 3/5 · Weekly") so you can 
 - Clicking the card still reveals the translation, after which **❌ Forgot** / **✅ Remembered** grade it normally.
 - **⌨ Type the word** (checkbox next to the scope controls) flips the direction: the translation is shown up front and you type the English word yourself instead of tapping to reveal it. Hit Enter or **Check** to see whether you got it right — correct/incorrect is shown before you grade with Forgot/Remembered, so a typo doesn't cost you if you actually knew the meaning. **Show answer instead** skips straight to the reveal if you're stuck. The setting persists across sessions.
 - If you navigate back (Prev) to a card you already graded this session, it reopens showing your answer with a "Graded this session" note instead of the grading buttons, so you can't accidentally grade the same card twice.
+
+**Choosing which fields show** — a **Show on card** row above the deck has a checkbox each for Context, Explanation, Similar words, and Notes, so you can tailor the flashcard to what actually helps you recall the word. The setting persists across sessions. Two things worth knowing about how they interact with reveal state:
+- **Context and Explanation** behave like hints — in normal (tap-to-reveal) mode they're visible before you reveal the translation, since they're English-side content and don't give away the answer.
+- **Similar words and Notes** stay hidden until you reveal the card, since they often echo the translation or target word directly and would spoil the recall attempt.
+- In **⌨ Type the word** mode, all four are hidden until you reveal (by submitting or giving up), since context in particular is known to contain the word itself.
+
+A field only shows if both its toggle is on *and* the current word actually has that field filled in.
 
 Words saved before this system existed (or SM-2-era entries) are migrated automatically the first time you open the review page — they're assigned level 3 without losing their existing due date.
 

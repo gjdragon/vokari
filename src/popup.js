@@ -126,6 +126,8 @@ function render(filter = "") {
       <div class="word">${escapeHtml(entry.word)}</div>
       <div class="translation">${escapeHtml(entry.translation)}</div>
       <div class="meta">${date}${entry.context ? " · " + truncate(entry.context, 60) : ""}</div>
+      ${entry.explanation ? `<div class="notes-preview">💬 ${escapeHtml(truncate(entry.explanation, 140))}</div>` : ""}
+      ${entry.similarWords ? `<div class="notes-preview">≈ ${escapeHtml(truncate(entry.similarWords, 140))}</div>` : ""}
       ${entry.notes ? `<div class="notes-preview">📝 ${escapeHtml(truncate(entry.notes, 140))}</div>` : ""}
       <div class="edit-form" data-word="${escapeHtml(entry.word)}" data-time="${entry.savedAt}">
         <label>
@@ -133,8 +135,16 @@ function render(filter = "") {
           <input type="text" class="edit-translation" value="${escapeHtml(entry.translation)}" />
         </label>
         <label>
-          Notes <span class="field-hint">(similar words, common uses, examples — anything that helps it stick)</span>
-          <textarea class="edit-notes" rows="3" placeholder="e.g. similar to 'ubiquitous', often paired with 'presence'…">${escapeHtml(entry.notes || "")}</textarea>
+          Explanation <span class="field-hint">(what it means, in English)</span>
+          <textarea class="edit-explanation" rows="2">${escapeHtml(entry.explanation || "")}</textarea>
+        </label>
+        <label>
+          Similar words <span class="field-hint">(synonyms, related terms)</span>
+          <input type="text" class="edit-similar-words" value="${escapeHtml(entry.similarWords || "")}" />
+        </label>
+        <label>
+          Notes <span class="field-hint">(anything else that helps it stick)</span>
+          <textarea class="edit-notes" rows="2" placeholder="e.g. often paired with 'presence'…">${escapeHtml(entry.notes || "")}</textarea>
         </label>
         <div class="edit-actions">
           <button type="button" class="edit-cancel">Cancel</button>
@@ -209,6 +219,8 @@ function render(filter = "") {
       const word = form.getAttribute("data-word");
       const time = Number(form.getAttribute("data-time"));
       const newTranslation = form.querySelector(".edit-translation").value.trim();
+      const newExplanation = form.querySelector(".edit-explanation").value.trim();
+      const newSimilarWords = form.querySelector(".edit-similar-words").value.trim();
       const newNotes = form.querySelector(".edit-notes").value.trim();
 
       if (!newTranslation) {
@@ -221,6 +233,8 @@ function render(filter = "") {
 
       const oldKey = entryKey(target);
       target.translation = newTranslation;
+      target.explanation = newExplanation;
+      target.similarWords = newSimilarWords;
       target.notes = newNotes;
       const newKey = entryKey(target);
       const updates = { library };
@@ -288,9 +302,17 @@ document.getElementById("clearAll").addEventListener("click", async () => {
 });
 
 document.getElementById("exportCsv").addEventListener("click", () => {
-  const rows = [["Word", "Translation", "Notes", "Context", "URL", "Date"]];
+  const rows = [["Word", "Translation", "Explanation", "Context", "Similar words", "Notes", "Date"]];
   library.forEach((e) =>
-    rows.push([e.word, e.translation, e.notes || "", e.context || "", e.url || "", new Date(e.savedAt).toISOString()])
+    rows.push([
+      e.word,
+      e.translation,
+      e.explanation || "",
+      e.context || "",
+      e.similarWords || "",
+      e.notes || "",
+      new Date(e.savedAt).toISOString(),
+    ])
   );
   const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
   downloadFile(csv, "vocabulary.csv", "text/csv");
@@ -477,11 +499,13 @@ function pickFurtherAlong(a, b) {
   if (revA !== revB) return revA > revB ? a : b;
 
   // Tie: keep the one with the earlier savedAt (preserve original save date),
-  // but merge in any context/url the other one has if this one is missing it.
+  // but merge in any context/explanation/similar words/notes the other one has
+  // if this one is missing it.
   const keeper = (a.savedAt || 0) <= (b.savedAt || 0) ? a : b;
   const other = keeper === a ? b : a;
   if (!keeper.context && other.context) keeper.context = other.context;
-  if (!keeper.url && other.url) keeper.url = other.url;
+  if (!keeper.explanation && other.explanation) keeper.explanation = other.explanation;
+  if (!keeper.similarWords && other.similarWords) keeper.similarWords = other.similarWords;
   if (!keeper.notes && other.notes) keeper.notes = other.notes;
   return keeper;
 }

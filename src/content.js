@@ -126,38 +126,60 @@ function showPopup(selectedText, rect, contextSentence) {
     (response) => {
       if (!popupEl) return; // popup may have been closed already
       const translationEl = popupEl.querySelector(".vk-translation");
+      const saveBtn = popupEl.querySelector(".vk-save-btn");
+
       if (response && response.ok) {
         translationEl.textContent = response.translation;
         translationEl.classList.remove("vk-loading");
         popupEl.dataset.sourceLang = response.sourceLang;
 
-        popupEl.querySelector(".vk-save-btn").addEventListener("click", (e) => {
-          chrome.runtime.sendMessage(
-            {
-              type: "SAVE_WORD",
-              entry: {
-                word: selectedText,
-                translation: response.translation,
-                sourceLang: response.sourceLang,
-                targetLang: response.targetLang,
-                context: contextSentence,
-                url: location.href,
-                savedAt: Date.now(),
-              },
-            },
-            () => {
-              e.target.textContent = "Saved ✓";
-              e.target.classList.add("vk-saved");
-              setTimeout(removePopup, 700);
-            }
-          );
+        saveBtn.addEventListener("click", (e) => {
+          saveEntry(e.target, {
+            word: selectedText,
+            translation: response.translation,
+            sourceLang: response.sourceLang,
+            targetLang: response.targetLang,
+            context: contextSentence,
+            savedAt: Date.now(),
+          });
         });
       } else {
-        translationEl.textContent = "Translation failed";
+        // Auto-translate failed — let the user paste/type their own translation
+        // (e.g. from google.com/translate) instead of being locked out of saving.
         translationEl.classList.remove("vk-loading");
+        translationEl.classList.add("vk-editable");
+        translationEl.textContent = "";
+        translationEl.contentEditable = "true";
+        translationEl.dataset.placeholder = "Translation failed — type or paste one";
+        translationEl.focus();
+
+        saveBtn.addEventListener("click", (e) => {
+          const manualTranslation = translationEl.textContent.trim();
+          if (!manualTranslation) {
+            translationEl.classList.add("vk-error");
+            translationEl.focus();
+            return;
+          }
+          saveEntry(e.target, {
+            word: selectedText,
+            translation: manualTranslation,
+            sourceLang: "auto",
+            targetLang: response ? response.targetLang : undefined,
+            context: contextSentence,
+            savedAt: Date.now(),
+          });
+        });
       }
     }
   );
+}
+
+function saveEntry(saveBtnEl, entry) {
+  chrome.runtime.sendMessage({ type: "SAVE_WORD", entry }, () => {
+    saveBtnEl.textContent = "Saved ✓";
+    saveBtnEl.classList.add("vk-saved");
+    setTimeout(removePopup, 700);
+  });
 }
 
 function escapeHtml(str) {

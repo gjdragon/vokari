@@ -2,7 +2,10 @@ const cardEl = document.getElementById("card");
 const wordEl = document.getElementById("word");
 const translationEl = document.getElementById("translation");
 const contextEl = document.getElementById("context");
+const explanationEl = document.getElementById("explanation");
+const similarWordsEl = document.getElementById("similarWords");
 const wordNotesEl = document.getElementById("notes");
+const fieldCbEls = document.querySelectorAll(".field-cb");
 const typeAnswerToggleEl = document.getElementById("typeAnswerToggle");
 const typeAnswerBoxEl = document.getElementById("typeAnswerBox");
 const typeAnswerInputEl = document.getElementById("typeAnswerInput");
@@ -23,6 +26,8 @@ const speakBtn = document.getElementById("speakBtn");
 const editBtn = document.getElementById("editBtn");
 const editOverlay = document.getElementById("editOverlay");
 const editTranslationInput = document.getElementById("editTranslationInput");
+const editExplanationInput = document.getElementById("editExplanationInput");
+const editSimilarWordsInput = document.getElementById("editSimilarWordsInput");
 const editNotesInput = document.getElementById("editNotesInput");
 const editOverlayError = document.getElementById("editOverlayError");
 const editSaveBtn = document.getElementById("editSaveBtn");
@@ -61,6 +66,7 @@ let revealed = false;
 let typeAnswerMode = false; // loaded from settings; "show translation, type the word" instead of tap-to-reveal
 let graded = new Map(); // key -> { remembered, level, interval } for cards graded this session
 let autoGenerateEnabled = false; // loaded from settings before the first card shows
+let visibleFields = { context: true, explanation: true, similarWords: true, notes: true }; // which recall-aid fields show on a revealed card
 let sentenceRequestToken = 0;   // guards against a stale async response overwriting a newer card
 let lastSentenceList = [];      // sentences currently shown in the history panel
 let practiceRequestToken = 0;   // same staleness guard, for the writing-practice panel
@@ -76,6 +82,36 @@ function speak(text, lang) {
   const utterance = new SpeechSynthesisUtterance(text);
   if (lang) utterance.lang = lang;
   window.speechSynthesis.speak(utterance);
+}
+
+// Renders the context/explanation/similar-words/notes recall aids for the current
+// card, honoring the user's "Show on card" field toggles.
+//
+// Context and explanation are English-side hints — like the existing context
+// sentence, they're safe to show before the translation is revealed (in normal
+// mode) since they don't give away the translation itself. Similar words and
+// notes often echo the translation/target word directly, so they stay gated
+// behind reveal, same as notes always has been.
+//
+// In "type the word" mode, ALL of these are hidden until revealed — the point
+// there is recalling the English word from the translation alone, and context
+// in particular is known to contain the word itself.
+function setSupportFields(entry, { revealed: isRevealed, typing }) {
+  const showFrontHints = typing ? isRevealed : true; // context/explanation: always-on in normal mode, reveal-gated in typing mode
+
+  contextEl.textContent = showFrontHints && visibleFields.context ? entry.context || "" : "";
+
+  explanationEl.textContent = entry.explanation || "";
+  explanationEl.classList.toggle(
+    "revealed",
+    showFrontHints && visibleFields.explanation && !!entry.explanation
+  );
+
+  similarWordsEl.textContent = entry.similarWords || "";
+  similarWordsEl.classList.toggle("revealed", isRevealed && visibleFields.similarWords && !!entry.similarWords);
+
+  wordNotesEl.textContent = entry.notes || "";
+  wordNotesEl.classList.toggle("revealed", isRevealed && visibleFields.notes && !!entry.notes);
 }
 
 function noResultsMessage() {
@@ -97,18 +133,33 @@ async function loadSettings() {
     typeAnswerMode: storedTypeAnswerMode,
     hideSentencePanel,
     hidePracticePanel,
+    visibleFields: storedVisibleFields,
   } = await chrome.storage.local.get([
     "autoGenerateSentence",
     "typeAnswerMode",
     "hideSentencePanel",
     "hidePracticePanel",
+    "visibleFields",
   ]);
   autoGenerateEnabled = !!autoGenerateSentence;
   typeAnswerMode = !!storedTypeAnswerMode;
   typeAnswerToggleEl.checked = typeAnswerMode;
   setPanelCollapsed(sentenceCol, sentenceColToggle, "AI Example", !!hideSentencePanel);
   setPanelCollapsed(practiceCol, practiceColToggle, "Your Practice", !!hidePracticePanel);
+
+  visibleFields = { ...visibleFields, ...(storedVisibleFields || {}) };
+  fieldCbEls.forEach((cb) => {
+    cb.checked = visibleFields[cb.value] !== false;
+  });
 }
+
+fieldCbEls.forEach((cb) => {
+  cb.addEventListener("change", () => {
+    visibleFields[cb.value] = cb.checked;
+    chrome.storage.local.set({ visibleFields });
+    if (queue.length > 0) showCurrent();
+  });
+});
 
 // --- Show/hide the side panels (AI Example / Your Practice) ---
 function setPanelCollapsed(colEl, toggleBtn, label, collapsed) {
@@ -187,20 +238,17 @@ function showCurrent() {
     wordEl.style.visibility = "hidden";
     translationEl.classList.remove("revealed");
     translationEl.style.display = "block"; // the translation IS the prompt in this mode
-    contextEl.textContent = ""; // the saved context sentence contains the word itself — would give it away
-    wordNotesEl.classList.remove("revealed");
+    setSupportFields(entry, { revealed, typing: true });
     typeAnswerBoxEl.style.display = "flex";
     hintEl.style.display = "none";
   } else {
     wordEl.style.visibility = "visible";
     translationEl.classList.toggle("revealed", revealed);
     translationEl.style.display = revealed ? "block" : "none";
-    contextEl.textContent = entry.context || "";
+    setSupportFields(entry, { revealed, typing: false });
     typeAnswerBoxEl.style.display = "none";
     hintEl.style.display = revealed ? "none" : "block";
   }
-  wordNotesEl.textContent = entry.notes || "";
-  wordNotesEl.classList.toggle("revealed", revealed && !!entry.notes);
 
   cardEl.style.display = "flex";
   controlsEl.style.display = "flex";
@@ -592,7 +640,7 @@ cardEl.addEventListener("click", () => {
   hintEl.style.display = "none";
   document.getElementById("knewIt").style.display = "none";
   gradeRowEl.style.display = "flex";
-  wordNotesEl.classList.toggle("revealed", !!entry.notes);
+  setSupportFields(entry, { revealed: true, typing: false });
 });
 
 speakBtn.addEventListener("click", (e) => {
@@ -607,6 +655,8 @@ editBtn.addEventListener("click", (e) => {
   if (queue.length === 0) return;
   const entry = current();
   editTranslationInput.value = entry.translation;
+  editExplanationInput.value = entry.explanation || "";
+  editSimilarWordsInput.value = entry.similarWords || "";
   editNotesInput.value = entry.notes || "";
   editOverlayError.style.display = "none";
   editOverlay.classList.add("open");
@@ -623,6 +673,8 @@ editSaveBtn.addEventListener("click", () => {
   if (queue.length === 0) return;
   const entry = current();
   const newTranslation = editTranslationInput.value.trim();
+  const newExplanation = editExplanationInput.value.trim();
+  const newSimilarWords = editSimilarWordsInput.value.trim();
   const newNotes = editNotesInput.value.trim();
 
   if (!newTranslation) {
@@ -635,7 +687,14 @@ editSaveBtn.addEventListener("click", () => {
   const key = keyFor(entry);
   editSaveBtn.disabled = true;
   chrome.runtime.sendMessage(
-    { type: "EDIT_WORD_ENTRY", key, translation: newTranslation, notes: newNotes },
+    {
+      type: "EDIT_WORD_ENTRY",
+      key,
+      translation: newTranslation,
+      explanation: newExplanation,
+      similarWords: newSimilarWords,
+      notes: newNotes,
+    },
     (res) => {
       editSaveBtn.disabled = false;
       if (!res || !res.ok) {
@@ -646,6 +705,8 @@ editSaveBtn.addEventListener("click", () => {
       // Update the in-memory queue entry so the rest of the session (and this
       // card's re-render) reflects the edit without needing to reload the queue.
       entry.translation = newTranslation;
+      entry.explanation = newExplanation;
+      entry.similarWords = newSimilarWords;
       entry.notes = newNotes;
       editOverlay.classList.remove("open");
       showCurrent();
@@ -665,8 +726,7 @@ function revealAfterTyping(entry, isCorrect, typed, gaveUp) {
   wordEl.classList.toggle("correct", isCorrect);
   wordEl.classList.toggle("incorrect", !isCorrect);
   translationEl.classList.add("revealed");
-  contextEl.textContent = entry.context || "";
-  wordNotesEl.classList.toggle("revealed", !!entry.notes);
+  setSupportFields(entry, { revealed: true, typing: true });
   typeAnswerBoxEl.style.display = "none";
   hintEl.style.display = "none";
 

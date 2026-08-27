@@ -264,9 +264,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(({ translation, sourceLang, targetLang }) => {
         sendResponse({ ok: true, translation, sourceLang, targetLang });
       })
-      .catch((err) => {
+      .catch(async (err) => {
         console.error(err);
-        sendResponse({ ok: false, error: err.message });
+        // Even on failure, tell the caller which target language this was for,
+        // so a manually-typed fallback translation still gets tagged correctly.
+        const { targetLang } = await chrome.storage.local.get("targetLang");
+        sendResponse({ ok: false, error: err.message, targetLang: targetLang || DEFAULT_TARGET_LANG });
       });
     return true; // keep the message channel open for async sendResponse
   }
@@ -287,7 +290,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "EDIT_WORD_ENTRY") {
-    editWordEntry(message.key, message.translation, message.notes)
+    editWordEntry(message.key, message.translation, message.explanation, message.similarWords, message.notes)
       .then((result) => sendResponse({ ok: true, ...result }))
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
@@ -495,13 +498,15 @@ async function reviewCard(key, remembered) {
 // the sentence-cache key (sentenceKeyFor, word+translation) does when the
 // meaning changes — so any cached AI sentences / writing-practice history are
 // carried over to the new key rather than orphaned.
-async function editWordEntry(key, translation, notes) {
+async function editWordEntry(key, translation, explanation, similarWords, notes) {
   const { library = [] } = await chrome.storage.local.get("library");
   const entry = library.find((e) => keyFor(e) === key);
   if (!entry) throw new Error("Word not found in library.");
 
   const oldSentenceKey = sentenceKeyFor(entry);
   entry.translation = translation;
+  entry.explanation = explanation;
+  entry.similarWords = similarWords;
   entry.notes = notes;
   const newSentenceKey = sentenceKeyFor(entry);
   const updates = { library };
@@ -529,7 +534,12 @@ async function editWordEntry(key, translation, notes) {
   }
 
   await chrome.storage.local.set(updates);
-  return { translation: entry.translation, notes: entry.notes };
+  return {
+    translation: entry.translation,
+    explanation: entry.explanation,
+    similarWords: entry.similarWords,
+    notes: entry.notes,
+  };
 }
 
 // --- Daily reminder ---

@@ -155,6 +155,37 @@
       letter-spacing: 0.03em;
       flex-shrink: 0;
     }
+    #fieldsBar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    #fieldsBar > span:first-child {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-tertiary);
+    }
+    #fieldsBar label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: "IBM Plex Mono", monospace;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 11px;
+    }
+    #fieldsBar input { margin: 0; accent-color: var(--gold); }
 
     /* --- three-column layout --- */
     #reviewGrid {
@@ -309,6 +340,7 @@
       cursor: default;
       z-index: 5;
       text-align: left;
+      overflow-y: auto;
     }
     #editOverlay.open { display: flex; }
     #editOverlay label {
@@ -407,7 +439,7 @@
       color: var(--text-tertiary);
       max-width: 320px;
     }
-    #notes {
+    #notes, #explanation, #similarWords {
       display: none;
       font-size: 12px;
       color: var(--text-secondary);
@@ -419,9 +451,18 @@
       white-space: pre-wrap;
       text-align: left;
     }
-    #notes.revealed {
+    #notes.revealed, #explanation.revealed, #similarWords.revealed {
       display: block;
       animation: vk-fadein 0.35s ease 0.18s both;
+    }
+    #explanation {
+      color: var(--paper);
+      font-style: italic;
+    }
+    #similarWords::before {
+      content: "Similar: ";
+      color: var(--text-tertiary);
+      font-style: normal;
     }
     #word.correct { color: var(--mint); }
     #word.incorrect { color: var(--coral); }
@@ -851,6 +892,13 @@
       ⌨ Type the word
     </label>
   </div>
+  <div id="fieldsBar" title="Choose which fields appear on the card once it's revealed">
+    <span>Show on card</span>
+    <label><input type="checkbox" class="field-cb" value="context" checked />Context</label>
+    <label><input type="checkbox" class="field-cb" value="explanation" checked />Explanation</label>
+    <label><input type="checkbox" class="field-cb" value="similarWords" checked />Similar words</label>
+    <label><input type="checkbox" class="field-cb" value="notes" checked />Notes</label>
+  </div>
   <div id="progress"></div>
 
   <div id="reviewGrid">
@@ -883,8 +931,16 @@
             <input type="text" id="editTranslationInput" />
           </label>
           <label>
-            Notes <span style="text-transform:none; letter-spacing:normal; color:var(--text-tertiary); font-size:10.5px;">(similar words, common usage, whatever helps it stick)</span>
-            <textarea id="editNotesInput" rows="3"></textarea>
+            Explanation <span style="text-transform:none; letter-spacing:normal; color:var(--text-tertiary); font-size:10.5px;">(what it means, in English)</span>
+            <textarea id="editExplanationInput" rows="2"></textarea>
+          </label>
+          <label>
+            Similar words <span style="text-transform:none; letter-spacing:normal; color:var(--text-tertiary); font-size:10.5px;">(synonyms, related terms)</span>
+            <input type="text" id="editSimilarWordsInput" />
+          </label>
+          <label>
+            Notes <span style="text-transform:none; letter-spacing:normal; color:var(--text-tertiary); font-size:10.5px;">(anything else that helps it stick)</span>
+            <textarea id="editNotesInput" rows="2"></textarea>
           </label>
           <div id="editOverlayError"></div>
           <div id="editOverlayActions">
@@ -895,6 +951,8 @@
         <div id="word"></div>
         <div id="translation"></div>
         <div id="context"></div>
+        <div id="explanation"></div>
+        <div id="similarWords"></div>
         <div id="notes"></div>
         <div id="typeAnswerBox">
           <div class="type-answer-row">
