@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Compacted the popup library list** to just word + translation (plus the 🔊/✎/✕ controls and level badge). The date-saved, context snippet, and explanation/similar-words/notes previews that used to print under each entry are no longer shown there — they're still fully there in the entry (viewable/editable via ✎ edit, and still included in CSV/Sync export), just not cluttering the compact list view.
+
 ## [1.2.0] - 2026-08-29
 
 ### Changed

@@ -117,7 +117,6 @@ function render(filter = "") {
     const level = entry.level || 3;
     const bucket = level === 1 ? "lvl-low" : level === 2 ? "lvl-mid" : "lvl-high";
     div.className = `entry ${bucket}`;
-    const date = new Date(entry.savedAt).toLocaleDateString();
     const translationHtml = entry.translation
       ? escapeHtml(entry.translation)
       : `<span class="translation-missing">No translation yet — tap ✎ edit to add one</span>`;
@@ -128,10 +127,6 @@ function render(filter = "") {
       <span class="speak" title="Hear pronunciation" data-word="${escapeHtml(entry.word)}" data-lang="${entry.sourceLang || ""}">🔊</span>
       <div class="word">${escapeHtml(entry.word)}</div>
       <div class="translation">${translationHtml}</div>
-      <div class="meta">${date}${entry.context ? " · " + truncate(entry.context, 60) : ""}</div>
-      ${entry.explanation ? `<div class="notes-preview">💬 ${escapeHtml(truncate(entry.explanation, 140))}</div>` : ""}
-      ${entry.similarWords ? `<div class="notes-preview">≈ ${escapeHtml(truncate(entry.similarWords, 140))}</div>` : ""}
-      ${entry.notes ? `<div class="notes-preview">📝 ${escapeHtml(truncate(entry.notes, 140))}</div>` : ""}
     `;
     listEl.appendChild(div);
   });
@@ -199,10 +194,6 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-function truncate(str, n) {
-  return str.length > n ? str.slice(0, n) + "…" : str;
 }
 
 searchEl.addEventListener("input", () => render(searchEl.value));
