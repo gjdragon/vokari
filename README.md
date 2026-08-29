@@ -13,7 +13,7 @@ Highlight any word/phrase on a webpage → see a translation popup → click Sav
 - [How to load it](#how-to-load-it-unpacked-for-developmentpersonal-use)
 - [How to use it](#how-to-use-it)
 - [Notes / things to know](#notes--things-to-know)
-- [Daily flashcard review (5-level system)](#daily-flashcard-review-5-level-system)
+- [Daily flashcard review (3-level system)](#daily-flashcard-review-3-level-system)
 - [Pronunciation / sound](#pronunciation--sound)
 - [Sentence practice (Gemini API)](#sentence-practice-gemini-api)
 - [Writing practice (Gemini API)](#writing-practice-gemini-api)
@@ -36,42 +36,42 @@ Highlight any word/phrase on a webpage → see a translation popup → click Sav
 
 1. Set your target language from the toolbar popup dropdown (defaults to Chinese).
 2. On any webpage, select/highlight an English word or short phrase.
-3. A small popup appears with the translation. If auto-translate fails (rate-limited, network hiccup), the translation field becomes editable so you can paste or type one in yourself instead of losing the word.
+3. A small popup appears with the translation. If auto-translate fails (rate-limited, network hiccup), the translation field becomes editable so you can paste or type one in yourself instead of losing the word — the popup stays open even if you need to click elsewhere first to go copy one, and you can save with the field left blank if you'd rather just fill it in later.
 4. Click **Save** to add it to your library.
 5. Click the toolbar icon anytime to browse, search, delete, or export your saved words (CSV or Anki-import format).
 6. Fill in the rest of the word's template — **explanation**, **similar words**, **notes** — later from the ✎ edit button, either in the popup list or on the review card.
 
 ## Notes / things to know
 
-- Translation is done via Google's public (unofficial) translate endpoint — free, no API key, but not officially supported and rate-limited. If you hit rate limits or want a production-grade setup, swap the `translateText()` function in `background.js` for the official Cloud Translation API (needs a Google Cloud API key and billing). If a translation request fails for any reason, the popup lets you type or paste your own translation instead of blocking the save.
+- Translation is done via Google's public (unofficial) translate endpoint — free, no API key, but not officially supported and rate-limited. If you hit rate limits or want a production-grade setup, swap the `translateText()` function in `background.js` for the official Cloud Translation API (needs a Google Cloud API key and billing). If a translation request fails for any reason, the popup lets you type or paste your own translation instead of blocking the save — and you can also just save the word with no translation at all and fill it in later.
 - Data is stored locally in `chrome.storage.local` — it stays on your machine and isn't synced across devices. If you want cross-device sync, switch to `chrome.storage.sync` (has a smaller size quota, ~100KB) or add a real backend.
 - The word length filter (in `content.js`) skips selections longer than 60 characters, to avoid triggering on full paragraphs. Adjust as needed.
-- **Word template** — every saved entry has six fields: **word**, **translation**, **explanation** (what it means, in English), **context** (the sentence you highlighted it from, captured automatically), **similar words** (synonyms/related terms), and **notes** (anything else — common usage, examples, whatever helps it stick). Word, translation, and context are filled in when you save; explanation, similar words, and notes are added afterward via **✎ edit** — either on an entry in the popup list or on the review card. There's no source-URL field — it was cut to keep entries compact.
-- **Editing a word** — click **✎ edit** on any entry in the popup list, or the ✎ button on the review card, to fill in or correct any of the template fields above. Explanation and similar-words previews show up in the popup list, and all four recall-aid fields (context, explanation, similar words, notes) can appear on the review card, subject to the "Show on card" toggles (see below). Everything here is included in CSV export and in Export/Import (Sync).
+- **Word template** — every saved entry has six fields: **word**, **translation**, **explanation** (what it means, in English), **context** (the sentence you highlighted it from, captured automatically), **similar words** (synonyms/related terms), and **notes** (anything else — common usage, examples, whatever helps it stick). Word and context are filled in when you save (translation too, when auto-translate succeeds); everything else — including correcting the context, or filling in a translation you skipped at save time — is added afterward via **✎ edit**, either on an entry in the popup list or on the review card. There's no source-URL field — it was cut to keep entries compact.
+- **Editing a word** — click **✎ edit** on any entry in the popup list, or the ✎ button on the review card, to fill in or correct any of the template fields above (including context, which is fully editable, not just auto-captured). From the popup list, this opens a small standalone window rather than an inline form — see below for why. Explanation and similar-words previews show up in the popup list, and all four recall-aid fields (context, explanation, similar words, notes) can appear on the review card, subject to the "Show on card" toggles (see below). Everything here is included in CSV export and in Export/Import (Sync).
+- **Editing stays open across tab/app switches** — the popup's ✎ edit form opens in its own small window instead of living inside the toolbar popup. This matters because a Chrome toolbar popup closes automatically the instant it loses focus; if the edit form lived inside it, switching tabs or apps to go copy some text (a translation, an example, whatever) would silently discard your in-progress edit. The standalone window has no such auto-close behavior — it stays visible until you click Save or Cancel, however long you're away. The review card's ✎ edit overlay doesn't have this problem in the first place, since the review page is a normal tab, not a transient popup.
+- **Saving without a translation** — if auto-translate fails (rate-limited, network hiccup), the capture popup's translation field becomes editable so you can type or paste one in yourself. It also now stays open even if you click or select text elsewhere on the page first (e.g. to go copy a translation from somewhere else, or switch tabs and come back) — previously that closed the popup and lost the word entirely. **Save works even if you leave the field blank**, too — the word is saved with no translation and shows "No translation yet" until you fill one in later via ✎ edit, so a failed lookup never means losing the word.
 
-## Daily flashcard review (5-level system)
+## Daily flashcard review (3-level system)
 
-Each word sits at a **level from 1 to 5**, which determines how often it comes up for review:
+Each word sits at a **level from 1 to 3**, which determines how often it comes up for review:
 
 | Level | Cadence | Meaning |
 |---|---|---|
 | 1 | Monthly | Well known |
-| 2 | Every 2 weeks | Getting solid |
-| 3 | Weekly | **Default for new words** |
-| 4 | Every 3 days | Still shaky |
-| 5 | Daily | Struggling |
+| 2 | Weekly | Getting solid |
+| 3 | Every 3 days | **Default for new words / needs work** |
 
 Grading is deliberately simple — two buttons, no judgment calls about "how easy":
 - **✅ Remembered** → level drops by 1 (moves towards monthly). A word at level 3 that you remember goes to level 2.
-- **❌ Forgot** → level rises by 1 (moves towards daily). A word at level 3 that you forget goes to level 4.
+- **❌ Forgot** → level stays the same. A word at level 3 that you forget stays at level 3 and just comes back around on the same every-3-days cadence — it doesn't get pushed to a harder tier.
 
-Levels are floored at 1 and capped at 5, so a well-known word can't schedule out past monthly, and a hard word can't review more than once a day.
+Levels are floored at 1 and capped at 3, so a well-known word can't schedule out past monthly, and a word you're still learning never reviews more often than every 3 days.
 
 **Choosing what to review** — the review page (opened via the popup's **Review** button, or the daily notification) has controls at the top:
-- **Scope**: **Due now** (default, the normal schedule) or **Last N days / weeks / months** — pulls in every word added in that window regardless of due date, useful for cramming a recent batch (e.g. everything from a trip, an article, or this week's reading) on demand.
-- **Level filter** (L1–L5 checkboxes, all on by default): untick levels you don't want. E.g. tick only L4 and L5 to drill just the words you're struggling with, or only L1 to spot-check words you think you've mastered. Combines with the scope — "L4–L5 words due now" or "L1 words from the last month" both work.
+- **Scope**: **Due now** (default, the normal schedule) or **Last N days / weeks / months** — pulls in every word added in that window regardless of due date, useful for cramming a recent batch (e.g. everything from a trip, an article, or this week's reading) on demand. Switching scope pre-fills a sensible default amount (3 for days, 2 for weeks, 1 for month) which you can overwrite.
+- **Level filter** (L1–L3 checkboxes, all on by default): untick levels you don't want. E.g. tick only L3 to drill just the words you're struggling with, or only L1 to spot-check words you think you've mastered. Combines with the scope — "L3 words due now" or "L1 words from the last month" both work.
 
-The card shows the word's current level (e.g. "Level 3/5 · Weekly") so you can see where it stands before you grade it, and after grading you'll see a short confirmation of the level change and next review date.
+The card shows the word's current level (e.g. "Level 3/3 · Every 3 days") so you can see where it stands before you grade it, and after grading you'll see a short confirmation of the level change and next review date.
 
 **Navigating the deck** — you're not locked into one-card-at-a-time grading:
 - **◀ Prev / Next ▶** move between cards without revealing the translation, so you can skim the words in a session before deciding where to focus. Left/Right arrow keys do the same.
@@ -87,7 +87,7 @@ The card shows the word's current level (e.g. "Level 3/5 · Weekly") so you can 
 
 A field only shows if both its toggle is on *and* the current word actually has that field filled in.
 
-Words saved before this system existed (or SM-2-era entries) are migrated automatically the first time you open the review page — they're assigned level 3 without losing their existing due date.
+Words saved before this system existed (or SM-2-era entries) are migrated automatically the first time you open the review page — they're assigned level 3 without losing their existing due date. Words carried over from the older 5-level system that were sitting at level 4 or 5 are migrated down to level 3, the new top of the scale.
 
 A background alarm still checks once a day and fires a Chrome notification if any words are due, so you don't have to remember to check.
 
@@ -172,7 +172,7 @@ Nothing is sent anywhere except the two Google endpoints above, and only in dire
 ## Possible next steps
 
 - Automate the sync-folder workflow above with a Chrome alarm that periodically writes an export to a fixed path (would need the `downloads` permission's overwrite behavior, or File System Access API where supported).
-- Let Gemini vary example-sentence difficulty based on the word's current review level (simpler sentences for level 4-5 struggling words, more complex ones for level 1-2 well-known words).
+- Let Gemini vary example-sentence difficulty based on the word's current review level (simpler sentences for level 3 words you're still learning, more complex ones for level 1 well-known words).
 - Add a lightweight "grammar patterns" view that aggregates the notes across all your writing-practice attempts, to surface recurring mistakes (e.g. "you often mix up past tense of irregular verbs") rather than reviewing them one attempt at a time.
 
 ## Changelog

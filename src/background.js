@@ -235,12 +235,14 @@ Rules:
   return { sentence: parsed.sentence, wordsUsed: Array.isArray(parsed.wordsUsed) ? parsed.wordsUsed : [] };
 }
 
-// --- 5-level Leitner-style scheduling ---
-// Level 1 = best known (reviewed monthly)  ...  Level 5 = struggling (reviewed daily).
-// New words start at level 3 (weekly) and move exactly one level per review:
-// remembered -> level - 1 (down towards monthly), forgot -> level + 1 (up towards daily).
+// --- 3-level Leitner-style scheduling ---
+// Level 1 = best known (reviewed monthly) ... Level 3 = default/needs-work (reviewed
+// every 3 days). New words start at level 3. Grading only ever moves a word DOWN
+// (towards monthly) on a correct recall — a miss just leaves it at its current
+// level so it comes back around on the same cadence rather than getting harder.
 const DEFAULT_LEVEL = 3;
-const LEVEL_INTERVAL_DAYS = { 1: 30, 2: 14, 3: 7, 4: 3, 5: 1 };
+const LEVEL_INTERVAL_DAYS = { 1: 30, 2: 7, 3: 3 };
+const MAX_LEVEL = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function keyFor(entry) {
@@ -248,10 +250,14 @@ function keyFor(entry) {
 }
 
 // Backfill fields for entries saved before the level system existed
-// (or by an older version of the app during a sync import). Non-destructive:
-// it only fills in what's missing, it never changes an existing level/due.
+// (or by an older version of the app during a sync import), and migrate any
+// entry left over from the old 5-level system (levels 4/5 no longer exist —
+// they collapse into the new level 3, the most-frequent tier). Non-destructive
+// otherwise: it never changes an existing in-range level/due.
 function ensureLevelFields(entry) {
   if (entry.level === undefined) entry.level = DEFAULT_LEVEL;
+  if (entry.level > MAX_LEVEL) entry.level = MAX_LEVEL; // old 4/5 levels collapse into 3
+  if (entry.level < 1) entry.level = 1;
   if (entry.interval === undefined) entry.interval = LEVEL_INTERVAL_DAYS[entry.level];
   if (entry.due === undefined) entry.due = entry.savedAt || Date.now();
   if (entry.reviewCount === undefined) entry.reviewCount = 0;
@@ -290,7 +296,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "EDIT_WORD_ENTRY") {
-    editWordEntry(message.key, message.translation, message.explanation, message.similarWords, message.notes)
+    editWordEntry(
+      message.key,
+      message.translation,
+      message.explanation,
+      message.similarWords,
+      message.notes,
+      message.context
+    )
       .then((result) => sendResponse({ ok: true, ...result }))
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
@@ -449,7 +462,7 @@ async function saveWord(entry) {
 //  - scope "due": everything currently due (the normal daily/weekly/monthly schedule)
 //  - scope "days"/"weeks"/"months": everything added within the last `amount` of that
 //    unit, regardless of due date — for browsing/cramming a recent batch on demand.
-// levels: optional array of level numbers (1-5) to restrict the queue to, e.g. [4, 5]
+// levels: optional array of level numbers (1-3) to restrict the queue to, e.g. [3]
 // to drill just the words you're struggling with. Omitted/empty means no filter.
 async function getReviewQueue(scope, amount, levels) {
   const { library = [] } = await chrome.storage.local.get("library");
@@ -475,14 +488,14 @@ async function getReviewQueue(scope, amount, levels) {
   return queue;
 }
 
-// remembered: true -> move one level down (towards monthly); false -> one level up (towards daily)
+// remembered: true -> move one level down (towards monthly); false -> stay at the same level
 async function reviewCard(key, remembered) {
   const { library = [] } = await chrome.storage.local.get("library");
   const entry = library.find((e) => keyFor(e) === key);
   if (!entry) return {};
   ensureLevelFields(entry);
 
-  entry.level = remembered ? Math.max(1, entry.level - 1) : Math.min(5, entry.level + 1);
+  entry.level = remembered ? Math.max(1, entry.level - 1) : entry.level;
   entry.interval = LEVEL_INTERVAL_DAYS[entry.level];
   entry.due = Date.now() + entry.interval * DAY_MS;
   entry.lastReviewed = Date.now();
@@ -498,7 +511,7 @@ async function reviewCard(key, remembered) {
 // the sentence-cache key (sentenceKeyFor, word+translation) does when the
 // meaning changes — so any cached AI sentences / writing-practice history are
 // carried over to the new key rather than orphaned.
-async function editWordEntry(key, translation, explanation, similarWords, notes) {
+async function editWordEntry(key, translation, explanation, similarWords, notes, context) {
   const { library = [] } = await chrome.storage.local.get("library");
   const entry = library.find((e) => keyFor(e) === key);
   if (!entry) throw new Error("Word not found in library.");
@@ -508,6 +521,7 @@ async function editWordEntry(key, translation, explanation, similarWords, notes)
   entry.explanation = explanation;
   entry.similarWords = similarWords;
   entry.notes = notes;
+  if (context !== undefined) entry.context = context;
   const newSentenceKey = sentenceKeyFor(entry);
   const updates = { library };
 
@@ -539,6 +553,7 @@ async function editWordEntry(key, translation, explanation, similarWords, notes)
     explanation: entry.explanation,
     similarWords: entry.similarWords,
     notes: entry.notes,
+    context: entry.context,
   };
 }
 

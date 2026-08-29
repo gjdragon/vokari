@@ -878,13 +878,11 @@
       <option value="weeks">Last N weeks</option>
       <option value="months">Last N months</option>
     </select>
-    <input id="amount" type="number" min="1" value="7" style="display:none;" />
+    <input id="amount" type="number" min="1" value="3" style="display:none;" />
     <span id="levelFilter">
       <label><input type="checkbox" class="lvl-cb" value="1" checked />L1</label>
       <label><input type="checkbox" class="lvl-cb" value="2" checked />L2</label>
       <label><input type="checkbox" class="lvl-cb" value="3" checked />L3</label>
-      <label><input type="checkbox" class="lvl-cb" value="4" checked />L4</label>
-      <label><input type="checkbox" class="lvl-cb" value="5" checked />L5</label>
     </span>
     <button id="startBtn">Go</button>
     <label id="modeToggle" title="Show the translation and type the English word yourself, instead of tapping to reveal it">
@@ -929,6 +927,10 @@
           <label>
             Meaning
             <input type="text" id="editTranslationInput" />
+          </label>
+          <label>
+            Context <span style="text-transform:none; letter-spacing:normal; color:var(--text-tertiary); font-size:10.5px;">(the sentence it was highlighted from)</span>
+            <textarea id="editContextInput" rows="2"></textarea>
           </label>
           <label>
             Explanation <span style="text-transform:none; letter-spacing:normal; color:var(--text-tertiary); font-size:10.5px;">(what it means, in English)</span>

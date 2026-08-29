@@ -26,6 +26,7 @@ const speakBtn = document.getElementById("speakBtn");
 const editBtn = document.getElementById("editBtn");
 const editOverlay = document.getElementById("editOverlay");
 const editTranslationInput = document.getElementById("editTranslationInput");
+const editContextInput = document.getElementById("editContextInput");
 const editExplanationInput = document.getElementById("editExplanationInput");
 const editSimilarWordsInput = document.getElementById("editSimilarWordsInput");
 const editNotesInput = document.getElementById("editNotesInput");
@@ -58,7 +59,11 @@ const practiceFavoriteBtn = document.getElementById("practiceFavoriteBtn");
 const practiceHistoryToggle = document.getElementById("practiceHistoryToggle");
 const practiceHistoryListEl = document.getElementById("practiceHistoryList");
 
-const LEVEL_LABEL = { 1: "Monthly", 2: "Every 2 weeks", 3: "Weekly", 4: "Every 3 days", 5: "Daily" };
+const LEVEL_LABEL = { 1: "Monthly", 2: "Weekly", 3: "Every 3 days" };
+const MAX_LEVEL = 3;
+// Sensible starting point per scope when the user switches "Last N ___" — only
+// applied on switching scope, not while they're actively typing a custom amount.
+const SCOPE_DEFAULT_AMOUNT = { days: 3, weeks: 2, months: 1 };
 
 let queue = [];       // fixed list for this session — Prev/Next just move the pointer
 let index = 0;
@@ -116,13 +121,17 @@ function setSupportFields(entry, { revealed: isRevealed, typing }) {
 
 function noResultsMessage() {
   const checked = document.querySelectorAll(".lvl-cb:checked").length;
-  if (checked === 0) return "No levels selected — tick at least one level (L1–L5) above and click Go.";
-  if (checked < 5) return "No words match the levels and scope you selected. Try widening the filter.";
+  if (checked === 0) return "No levels selected — tick at least one level (L1–L3) above and click Go.";
+  if (checked < MAX_LEVEL) return "No words match the levels and scope you selected. Try widening the filter.";
   return "No words are due for review right now. Come back tomorrow, or keep highlighting new words as you read.";
 }
 
 scopeEl.addEventListener("change", () => {
-  amountEl.style.display = scopeEl.value === "due" ? "none" : "inline-block";
+  const scope = scopeEl.value;
+  amountEl.style.display = scope === "due" ? "none" : "inline-block";
+  if (SCOPE_DEFAULT_AMOUNT[scope] !== undefined) {
+    amountEl.value = SCOPE_DEFAULT_AMOUNT[scope];
+  }
 });
 
 document.getElementById("startBtn").addEventListener("click", loadQueue);
@@ -229,7 +238,7 @@ function showCurrent() {
 
   wordEl.textContent = entry.word;
   wordEl.classList.remove("correct", "incorrect");
-  translationEl.textContent = entry.translation;
+  translationEl.textContent = entry.translation || "(no translation saved — click ✎ to add one)";
   typeAnswerInputEl.value = "";
   typeAnswerFeedbackEl.textContent = "";
   typeAnswerFeedbackEl.className = "";
@@ -255,18 +264,18 @@ function showCurrent() {
   emptyEl.style.display = "none";
 
   const level = result ? result.level : entry.level || 3;
-  levelBadgeEl.textContent = `Level ${level}/5 · ${LEVEL_LABEL[level]}`;
-  levelBadgeEl.className = level <= 2 ? "lvl-low" : level === 3 ? "lvl-mid" : "lvl-high";
+  levelBadgeEl.textContent = `Level ${level}/${MAX_LEVEL} · ${LEVEL_LABEL[level]}`;
+  levelBadgeEl.className = level === 1 ? "lvl-low" : level === 2 ? "lvl-mid" : "lvl-high";
 
   if (result) {
     navRowEl.style.display = "flex";
     document.getElementById("knewIt").style.display = "none";
     gradeRowEl.style.display = "none";
     alreadyGradedEl.style.display = "block";
-    const arrow = result.remembered ? "↓" : "↑";
+    const arrow = result.remembered ? "↓" : "→";
     alreadyGradedEl.textContent = `Graded this session: ${
       result.remembered ? "Remembered" : "Forgot"
-    } ${arrow} level ${result.level}/5`;
+    } ${arrow} level ${result.level}/${MAX_LEVEL}`;
   } else {
     navRowEl.style.display = "flex";
     document.getElementById("knewIt").style.display = revealed ? "none" : "inline-block";
@@ -655,6 +664,7 @@ editBtn.addEventListener("click", (e) => {
   if (queue.length === 0) return;
   const entry = current();
   editTranslationInput.value = entry.translation;
+  editContextInput.value = entry.context || "";
   editExplanationInput.value = entry.explanation || "";
   editSimilarWordsInput.value = entry.similarWords || "";
   editNotesInput.value = entry.notes || "";
@@ -673,6 +683,7 @@ editSaveBtn.addEventListener("click", () => {
   if (queue.length === 0) return;
   const entry = current();
   const newTranslation = editTranslationInput.value.trim();
+  const newContext = editContextInput.value.trim();
   const newExplanation = editExplanationInput.value.trim();
   const newSimilarWords = editSimilarWordsInput.value.trim();
   const newNotes = editNotesInput.value.trim();
@@ -694,6 +705,7 @@ editSaveBtn.addEventListener("click", () => {
       explanation: newExplanation,
       similarWords: newSimilarWords,
       notes: newNotes,
+      context: newContext,
     },
     (res) => {
       editSaveBtn.disabled = false;
@@ -705,6 +717,7 @@ editSaveBtn.addEventListener("click", () => {
       // Update the in-memory queue entry so the rest of the session (and this
       // card's re-render) reflects the edit without needing to reload the queue.
       entry.translation = newTranslation;
+      entry.context = newContext;
       entry.explanation = newExplanation;
       entry.similarWords = newSimilarWords;
       entry.notes = newNotes;
@@ -775,8 +788,8 @@ function grade(remembered) {
   const key = keyFor(entry);
   chrome.runtime.sendMessage({ type: "REVIEW_CARD", key, remembered }, (res) => {
     graded.set(key, { remembered, level: res.level, interval: res.interval });
-    const arrow = remembered ? "↓" : "↑";
-    lastResultEl.textContent = `"${entry.word}" ${arrow} level ${res.level}/5 — next review in ${res.interval} day${
+    const arrow = remembered ? "↓" : "→";
+    lastResultEl.textContent = `"${entry.word}" ${arrow} level ${res.level}/${MAX_LEVEL} — next review in ${res.interval} day${
       res.interval === 1 ? "" : "s"
     }`;
     goNext();

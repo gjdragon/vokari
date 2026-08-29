@@ -115,42 +115,23 @@ function render(filter = "") {
   filtered.forEach((entry) => {
     const div = document.createElement("div");
     const level = entry.level || 3;
-    const bucket = level <= 2 ? "lvl-low" : level === 3 ? "lvl-mid" : "lvl-high";
+    const bucket = level === 1 ? "lvl-low" : level === 2 ? "lvl-mid" : "lvl-high";
     div.className = `entry ${bucket}`;
     const date = new Date(entry.savedAt).toLocaleDateString();
+    const translationHtml = entry.translation
+      ? escapeHtml(entry.translation)
+      : `<span class="translation-missing">No translation yet — tap ✎ edit to add one</span>`;
     div.innerHTML = `
       <span class="del" data-word="${escapeHtml(entry.word)}" data-time="${entry.savedAt}">✕ remove</span>
-      <span class="edit-toggle" data-word="${escapeHtml(entry.word)}" data-time="${entry.savedAt}" title="Edit meaning & add notes">✎ edit</span>
-      <span class="lvl-badge" title="Review level ${level}/5">L${level}</span>
+      <span class="edit-toggle" data-word="${escapeHtml(entry.word)}" data-time="${entry.savedAt}" title="Edit meaning, context & notes">✎ edit</span>
+      <span class="lvl-badge" title="Review level ${level}/3">L${level}</span>
       <span class="speak" title="Hear pronunciation" data-word="${escapeHtml(entry.word)}" data-lang="${entry.sourceLang || ""}">🔊</span>
       <div class="word">${escapeHtml(entry.word)}</div>
-      <div class="translation">${escapeHtml(entry.translation)}</div>
+      <div class="translation">${translationHtml}</div>
       <div class="meta">${date}${entry.context ? " · " + truncate(entry.context, 60) : ""}</div>
       ${entry.explanation ? `<div class="notes-preview">💬 ${escapeHtml(truncate(entry.explanation, 140))}</div>` : ""}
       ${entry.similarWords ? `<div class="notes-preview">≈ ${escapeHtml(truncate(entry.similarWords, 140))}</div>` : ""}
       ${entry.notes ? `<div class="notes-preview">📝 ${escapeHtml(truncate(entry.notes, 140))}</div>` : ""}
-      <div class="edit-form" data-word="${escapeHtml(entry.word)}" data-time="${entry.savedAt}">
-        <label>
-          Meaning
-          <input type="text" class="edit-translation" value="${escapeHtml(entry.translation)}" />
-        </label>
-        <label>
-          Explanation <span class="field-hint">(what it means, in English)</span>
-          <textarea class="edit-explanation" rows="2">${escapeHtml(entry.explanation || "")}</textarea>
-        </label>
-        <label>
-          Similar words <span class="field-hint">(synonyms, related terms)</span>
-          <input type="text" class="edit-similar-words" value="${escapeHtml(entry.similarWords || "")}" />
-        </label>
-        <label>
-          Notes <span class="field-hint">(anything else that helps it stick)</span>
-          <textarea class="edit-notes" rows="2" placeholder="e.g. often paired with 'presence'…">${escapeHtml(entry.notes || "")}</textarea>
-        </label>
-        <div class="edit-actions">
-          <button type="button" class="edit-cancel">Cancel</button>
-          <button type="button" class="edit-save">Save</button>
-        </div>
-      </div>
     `;
     listEl.appendChild(div);
   });
@@ -188,89 +169,27 @@ function render(filter = "") {
     });
   });
 
-  // --- inline edit (meaning + freeform notes) ---
+  // --- edit (meaning, context, explanation, similar words, notes) ---
+  // Opens in its own standalone window (see edit.html/edit.js) rather than an
+  // inline form here, because this toolbar popup is a real Chrome extension
+  // action popup: it auto-closes the instant it loses focus, which used to
+  // wipe out any in-progress edit the moment the user switched tabs/windows
+  // to go copy some text. A separate window has no such auto-close behavior,
+  // so it stays open and visible until Save or Cancel is clicked.
   listEl.querySelectorAll(".edit-toggle").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const form = findEditForm(btn);
-      const willOpen = !form.classList.contains("open");
-      // Only one edit form open at a time.
-      listEl.querySelectorAll(".edit-form.open").forEach((f) => f.classList.remove("open"));
-      listEl.querySelectorAll(".edit-toggle.active").forEach((b) => b.classList.remove("active"));
-      if (willOpen) {
-        form.classList.add("open");
-        btn.classList.add("active");
-        form.querySelector(".edit-translation").focus();
-      }
-    });
-  });
-
-  listEl.querySelectorAll(".edit-cancel").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const form = btn.closest(".edit-form");
-      form.classList.remove("open");
-      const toggle = form.parentElement.querySelector(".edit-toggle");
-      if (toggle) toggle.classList.remove("active");
-    });
-  });
-
-  listEl.querySelectorAll(".edit-save").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const form = btn.closest(".edit-form");
-      const word = form.getAttribute("data-word");
-      const time = Number(form.getAttribute("data-time"));
-      const newTranslation = form.querySelector(".edit-translation").value.trim();
-      const newExplanation = form.querySelector(".edit-explanation").value.trim();
-      const newSimilarWords = form.querySelector(".edit-similar-words").value.trim();
-      const newNotes = form.querySelector(".edit-notes").value.trim();
-
-      if (!newTranslation) {
-        form.querySelector(".edit-translation").focus();
-        return;
-      }
-
-      const target = library.find((e) => e.word === word && e.savedAt === time);
-      if (!target) return;
-
-      const oldKey = entryKey(target);
-      target.translation = newTranslation;
-      target.explanation = newExplanation;
-      target.similarWords = newSimilarWords;
-      target.notes = newNotes;
-      const newKey = entryKey(target);
-      const updates = { library };
-
-      // If the meaning changed, the cache key (word+translation) changed too —
-      // carry any saved example sentences / writing-practice history over to
-      // the new key so editing the meaning doesn't orphan that history.
-      if (oldKey !== newKey) {
-        const stillUsed = library.some((e) => e !== target && entryKey(e) === oldKey);
-        if (!stillUsed) {
-          const { sentenceCache = {}, userSentenceCache = {} } = await chrome.storage.local.get([
-            "sentenceCache",
-            "userSentenceCache",
-          ]);
-          if (sentenceCache[oldKey]) {
-            sentenceCache[newKey] = (sentenceCache[newKey] || []).concat(sentenceCache[oldKey]);
-            delete sentenceCache[oldKey];
-          }
-          if (userSentenceCache[oldKey]) {
-            userSentenceCache[newKey] = (userSentenceCache[newKey] || []).concat(userSentenceCache[oldKey]);
-            delete userSentenceCache[oldKey];
-          }
-          updates.sentenceCache = sentenceCache;
-          updates.userSentenceCache = userSentenceCache;
-        }
-      }
-
-      await chrome.storage.local.set(updates);
-      render(searchEl.value);
-      renderReviewBanner();
+      const word = btn.getAttribute("data-word");
+      const time = btn.getAttribute("data-time");
+      openEditWindow(word, time);
     });
   });
 }
 
-function findEditForm(editToggleBtn) {
-  return editToggleBtn.parentElement.querySelector(".edit-form");
+function openEditWindow(word, time) {
+  const url = chrome.runtime.getURL(
+    `edit.html?word=${encodeURIComponent(word)}&time=${encodeURIComponent(time)}`
+  );
+  chrome.windows.create({ url, type: "popup", width: 380, height: 640 });
 }
 
 function escapeHtml(str) {
@@ -484,7 +403,7 @@ function trimRecordList(list, max) {
 }
 
 // Given two entries for the same word, return whichever represents more review progress.
-// Lower level = more familiar/further along (level 1 = monthly, level 5 = daily/struggling).
+// Lower level = more familiar/further along (level 1 = monthly, level 3 = every 3 days/needs work).
 function pickFurtherAlong(a, b) {
   const levelA = a.level || 3;
   const levelB = b.level || 3;

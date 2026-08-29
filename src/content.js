@@ -3,6 +3,13 @@
 let popupEl = null;
 let lastSelectionTime = 0;
 let foreignPopupRect = null;
+// True while the popup is in "auto-translate failed, type/paste your own" mode.
+// While this is true we deliberately keep the popup open even if the user
+// clicks/selects elsewhere on the page — e.g. to go copy a translation from
+// another spot on the page (or switch tabs and come back) — so they have
+// somewhere to paste it into. It's only cleared when the popup is closed
+// (explicitly, via save, or by a brand-new lookup).
+let manualEntryActive = false;
 
 // Watch for other extensions injecting their own floating popups (e.g. Google
 // Translate's own select-to-translate popup) right after a text selection, so
@@ -34,6 +41,7 @@ function removePopup() {
     popupEl.remove();
     popupEl = null;
   }
+  manualEntryActive = false;
 }
 
 function getSelectionContext(selection) {
@@ -146,20 +154,19 @@ function showPopup(selectedText, rect, contextSentence) {
       } else {
         // Auto-translate failed — let the user paste/type their own translation
         // (e.g. from google.com/translate) instead of being locked out of saving.
+        // The popup stays open (see manualEntryActive below) even if they click
+        // or select text elsewhere to go copy one, and Save works even if they
+        // leave it blank — they can always fill the translation in later via edit.
+        manualEntryActive = true;
         translationEl.classList.remove("vk-loading");
         translationEl.classList.add("vk-editable");
         translationEl.textContent = "";
         translationEl.contentEditable = "true";
-        translationEl.dataset.placeholder = "Translation failed — type or paste one";
+        translationEl.dataset.placeholder = "Translation failed — type/paste one, or just Save without it";
         translationEl.focus();
 
         saveBtn.addEventListener("click", (e) => {
           const manualTranslation = translationEl.textContent.trim();
-          if (!manualTranslation) {
-            translationEl.classList.add("vk-error");
-            translationEl.focus();
-            return;
-          }
           saveEntry(e.target, {
             word: selectedText,
             translation: manualTranslation,
@@ -192,6 +199,13 @@ document.addEventListener("mouseup", (e) => {
   // Ignore clicks inside our own popup
   if (popupEl && popupEl.contains(e.target)) return;
 
+  // Don't let a stray selection elsewhere on the page (e.g. selecting a
+  // translation somewhere else to copy it) blow away an in-progress manual
+  // translation entry by triggering a brand-new lookup popup. The user can
+  // explicitly close the current popup (Close button) to look up something
+  // else instead.
+  if (popupEl && manualEntryActive) return;
+
   const selection = window.getSelection();
   const selectedText = selection.toString().trim();
 
@@ -214,6 +228,12 @@ document.addEventListener("mouseup", (e) => {
 });
 
 document.addEventListener("mousedown", (e) => {
+  // While the user is in the middle of typing/pasting a manual translation,
+  // don't close the popup just because they clicked or started selecting
+  // something elsewhere on the page (e.g. to copy a translation from
+  // somewhere else and paste it in). Only an explicit Close/Save dismisses
+  // it in that state.
+  if (manualEntryActive) return;
   if (popupEl && !popupEl.contains(e.target)) {
     removePopup();
   }

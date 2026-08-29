@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-29
+
+### Changed
+- **Simplified to a 3-level review system** (Monthly → Weekly → Every 3 days). New words still start at the same tier as before, now called level 3. Grading is simpler too: **Remembered** still drops a word one level (towards monthly); **Forgot** now leaves it at its current level instead of pushing it to a harder tier. Existing words previously at level 4 or 5 are migrated down to level 3 automatically. The level filter on the review page is now L1–L3.
+- **Context is now editable**, in both the popup's ✎ edit window and the review card's ✎ edit overlay — previously it could only be captured automatically at save time.
+- The review page's **"Last N days"** scope now defaults to 3 (was 7). Switching to "Last N weeks"/"Last N months" now also pre-fills a sensible default (2 and 1, respectively) instead of carrying over whatever number was last typed.
+
+### Fixed
+- **Saving without a translation now actually works.** Previously, if auto-translate failed, Save was blocked until you typed something into the translation field — but selecting text elsewhere on the page (e.g. to copy a translation from another spot, or from another tab) closed the popup instantly, with no way to get back into it. The capture popup now stays open through that kind of click/selection while it's waiting on a manual translation, and Save now works even if you leave the field blank — you can always fill the translation in later via ✎ edit.
+- **The word-editing window no longer disappears mid-edit.** The toolbar popup's ✎ edit form used to live inside the toolbar popup itself, which — like any Chrome extension toolbar popup — closes automatically the instant it loses focus, silently discarding whatever you'd typed if you switched tabs/apps to copy some text. Editing now opens in its own small standalone window that stays open regardless of focus changes, until you click Save or Cancel.
+
 ## [1.1.0] - 2026-08-27
 
 ### Added
@@ -41,6 +52,7 @@ Initial public release.
 - Popup-collision handling so the extension's translation popup avoids overlapping other extensions' (e.g. Google Translate's) select-to-translate popups.
 - Manual cross-device sync via Export (Sync) / Import (Sync) JSON files, with field-level merge logic that preserves whichever copy is further along and never regresses review progress. Includes example-sentence and writing-practice history/favorites in the sync payload.
 
-[Unreleased]: https://github.com/gjdragon/vokari/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/gjdragon/vokari/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/gjdragon/vokari/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/gjdragon/vokari/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/gjdragon/vokari/releases/tag/v1.0.0

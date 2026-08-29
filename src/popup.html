@@ -262,6 +262,10 @@
       font-size: 12.5px;
       margin-top: 1px;
     }
+    .entry .translation-missing {
+      color: var(--text-tertiary);
+      font-style: italic;
+    }
     .entry .meta {
       font-family: "IBM Plex Mono", monospace;
       font-size: 10px;
@@ -311,62 +315,6 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .entry .edit-form {
-      display: none;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 8px;
-      padding: 10px;
-      background: var(--ink-900);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      clear: both;
-    }
-    .entry .edit-form.open { display: flex; }
-    .entry .edit-form label {
-      display: block;
-      font-size: 11px;
-      color: var(--text-secondary);
-    }
-    .entry .edit-form .field-hint {
-      font-weight: 400;
-      color: var(--text-tertiary);
-      font-size: 10px;
-    }
-    .entry .edit-form input[type="text"],
-    .entry .edit-form textarea {
-      width: 100%;
-      box-sizing: border-box;
-      margin-top: 4px;
-      padding: 7px 9px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--paper);
-      font-size: 12px;
-      font-family: inherit;
-      resize: vertical;
-    }
-    .entry .edit-form input[type="text"]:focus,
-    .entry .edit-form textarea:focus { outline: none; border-color: var(--gold); }
-    .entry .edit-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-    .entry .edit-actions button {
-      border-radius: 16px;
-      padding: 6px 13px;
-      font-size: 11.5px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-      border: none;
-    }
-    .entry .edit-save { background: var(--gold); color: var(--gold-ink); }
-    .entry .edit-save:hover { filter: brightness(1.08); }
-    .entry .edit-cancel { background: var(--surface); color: var(--paper); border: 1px solid var(--border); }
-    .entry .edit-cancel:hover { background: var(--surface-raised); }
     #empty {
       text-align: center;
       color: var(--text-tertiary);

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Edit word — Vokari</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink-950: #1a1711;
+      --ink-900: #201c14;
+      --surface: #26211a;
+      --surface-raised: #322b20;
+      --border: #3c3323;
+      --paper: #f4efe4;
+      --text-secondary: #b7ac97;
+      --text-tertiary: #7d7460;
+      --gold: #ffb627;
+      --gold-ink: #3a2a05;
+      --coral: #ff6b5e;
+      --mint: #5eead4;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--ink-950);
+      color: var(--paper);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 18px 14px;
+    }
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+    .brand-mark {
+      position: relative;
+      display: inline-block;
+      width: fit-content;
+      font-family: "Fraunces", Georgia, serif;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--paper);
+    }
+    .brand-mark::before {
+      content: "";
+      position: absolute;
+      left: -3px; right: -5px; bottom: 1px;
+      height: 38%;
+      background: var(--gold);
+      opacity: 0.88;
+      transform: skewX(-8deg) rotate(-1deg);
+      z-index: -1;
+      border-radius: 1px 5px 2px 4px;
+    }
+    #wordHeading {
+      font-family: "Fraunces", Georgia, serif;
+      font-weight: 600;
+      font-size: 20px;
+      margin-top: 6px;
+    }
+    #hint {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+    label {
+      display: block;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .field-hint {
+      font-weight: 400;
+      color: var(--text-tertiary);
+      font-size: 10.5px;
+    }
+    input[type="text"],
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 5px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--paper);
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+    }
+    input[type="text"]:focus,
+    textarea:focus { outline: none; border-color: var(--gold); }
+    #error {
+      display: none;
+      color: var(--coral);
+      font-size: 11.5px;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+    .actions button {
+      border-radius: 18px;
+      padding: 8px 16px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      border: none;
+    }
+    #saveBtn { background: var(--gold); color: var(--gold-ink); }
+    #saveBtn:hover { filter: brightness(1.08); }
+    #saveBtn:disabled { opacity: 0.6; cursor: default; }
+    #cancelBtn { background: var(--surface); color: var(--paper); border: 1px solid var(--border); }
+    #cancelBtn:hover { background: var(--surface-raised); }
+    #notFound {
+      display: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand-mark">Vokari</span>
+    <div id="wordHeading">…</div>
+    <div id="hint">This window stays open even if you switch tabs or apps to copy some text — come back and paste it in, then Save.</div>
+  </header>
+  <div id="notFound">This word couldn't be found — it may have been deleted. You can close this window.</div>
+  <form id="editForm">
+    <label>
+      Meaning
+      <input type="text" id="translationInput" />
+    </label>
+    <label>
+      Context <span class="field-hint">(the sentence it was highlighted from)</span>
+      <textarea id="contextInput" rows="2"></textarea>
+    </label>
+    <label>
+      Explanation <span class="field-hint">(what it means, in English)</span>
+      <textarea id="explanationInput" rows="2"></textarea>
+    </label>
+    <label>
+      Similar words <span class="field-hint">(synonyms, related terms)</span>
+      <input type="text" id="similarWordsInput" />
+    </label>
+    <label>
+      Notes <span class="field-hint">(anything else that helps it stick)</span>
+      <textarea id="notesInput" rows="2" placeholder="e.g. often paired with 'presence'…"></textarea>
+    </label>
+    <div id="error"></div>
+    <div class="actions">
+      <button type="button" id="cancelBtn">Cancel</button>
+      <button type="button" id="saveBtn">Save</button>
+    </div>
+  </form>
+  <script src="edit.js"></script>
+</body>
+</html>
