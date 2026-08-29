@@ -42,10 +42,15 @@ async function load() {
 
 cancelBtn.addEventListener("click", () => window.close());
 
-// Esc closes the window like Cancel, but not while focus is inside a
-// multi-line textarea (so Esc doesn't fight with e.g. clearing a selection).
+// Esc closes the window like Cancel — but not while focus is inside a text
+// field, so it doesn't fight with things like cancelling an IME composition
+// (common when typing a Chinese/Japanese/Korean translation) or just clearing
+// a selection inside a field.
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") window.close();
+  if (e.key !== "Escape") return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea") return;
+  window.close();
 });
 
 saveBtn.addEventListener("click", async () => {

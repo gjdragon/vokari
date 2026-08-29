@@ -820,12 +820,18 @@ document.getElementById("forgot").addEventListener("click", () => grade(false));
 document.getElementById("remembered").addEventListener("click", () => grade(true));
 
 document.addEventListener("keydown", (e) => {
+  const tag = (e.target.tagName || "").toLowerCase();
+  const inField = tag === "input" || tag === "textarea" || tag === "select";
+
   if (e.key === "Escape" && editOverlay.classList.contains("open")) {
+    // Don't let Escape close the whole overlay (discarding the edit) while
+    // it's just being used to cancel an IME composition or clear a field's
+    // own selection — e.g. typing a Chinese/Japanese/Korean translation.
+    if (inField) return;
     editOverlay.classList.remove("open");
     return;
   }
-  const tag = (e.target.tagName || "").toLowerCase();
-  if (tag === "input" || tag === "textarea" || tag === "select") return;
+  if (inField) return;
   if (editOverlay.classList.contains("open")) return; // don't navigate cards while editing
   if (e.key === "ArrowLeft") goPrev();
   else if (e.key === "ArrowRight") goNext();

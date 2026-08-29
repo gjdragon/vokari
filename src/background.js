@@ -54,7 +54,7 @@ const MAX_SENTENCES_PER_WORD = 8;
 const MAX_USER_SENTENCES_PER_WORD = 8;
 
 function sentenceKeyFor(entry) {
-  return `${entry.word.toLowerCase()}|${entry.translation}`;
+  return `${entry.word.toLowerCase()}|${entry.translation || ""}`;
 }
 
 // Generic trimmer for either cache: records need only an `id`, `favorite`, and a

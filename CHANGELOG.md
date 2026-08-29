@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-08-29
+
 ### Changed
 - **Compacted the popup library list** to just word + translation (plus the 🔊/✎/✕ controls and level badge). The date-saved, context snippet, and explanation/similar-words/notes previews that used to print under each entry are no longer shown there — they're still fully there in the entry (viewable/editable via ✎ edit, and still included in CSV/Sync export), just not cluttering the compact list view.
+- The word heading in the standalone ✎ edit window now matches the popup list's word size (it was rendering noticeably larger than everywhere else).
+
+### Fixed
+- **Import (Sync) was silently dropping any word saved without a translation.** The importer required a truthy translation on every incoming entry — a leftover from before blank translations were allowed — so a word you saved with no translation (see 1.2.0) would vanish on export/import instead of round-tripping like everything else. It now requires only that the word itself be present.
+- **Escape could silently discard an in-progress edit.** In both the standalone ✎ edit window and the review card's ✎ edit overlay, pressing Escape closed the whole editor even while typing inside a field — including mid-IME-composition, which matters here more than most extensions since you're often typing translations in Chinese/Japanese/Korean. Escape now only closes the editor when focus isn't inside a text field.
+
+### Added
+- `LICENSE` file (MIT) — the README already linked to one, but it didn't exist in the repo. Fill in your name in the copyright line before you publish anywhere.
 
 ## [1.2.0] - 2026-08-29
 
@@ -55,7 +65,8 @@ Initial public release.
 - Popup-collision handling so the extension's translation popup avoids overlapping other extensions' (e.g. Google Translate's) select-to-translate popups.
 - Manual cross-device sync via Export (Sync) / Import (Sync) JSON files, with field-level merge logic that preserves whichever copy is further along and never regresses review progress. Includes example-sentence and writing-practice history/favorites in the sync payload.
 
-[Unreleased]: https://github.com/gjdragon/vokari/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/gjdragon/vokari/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/gjdragon/vokari/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/gjdragon/vokari/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/gjdragon/vokari/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/gjdragon/vokari/releases/tag/v1.0.0

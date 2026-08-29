@@ -249,8 +249,9 @@ function downloadFile(content, filename, mime) {
 
 // Identity used to match "the same word" across two libraries.
 // Word (case-insensitive) + translation, same rule saveWord() already uses for de-duping.
+// Translation can be "" (word saved without one yet), so guard against undefined/null too.
 function entryKey(e) {
-  return `${e.word.toLowerCase()}|${e.translation}`;
+  return `${e.word.toLowerCase()}|${e.translation || ""}`;
 }
 
 document.getElementById("exportJson").addEventListener("click", async () => {
@@ -305,7 +306,11 @@ document.getElementById("importJsonFile").addEventListener("change", async (e) =
   let unchanged = 0;
 
   for (const incomingEntry of incoming) {
-    if (!incomingEntry || !incomingEntry.word || !incomingEntry.translation) continue;
+    // Word is required; translation is not — a word saved before you got around
+    // to filling in a translation (or one you deliberately left blank) must
+    // still round-trip through Export/Import (Sync) instead of being silently
+    // dropped here.
+    if (!incomingEntry || !incomingEntry.word) continue;
     const key = entryKey(incomingEntry);
     const existing = existingByKey.get(key);
 
