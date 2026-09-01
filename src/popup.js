@@ -56,6 +56,10 @@ document.getElementById("startReview").addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("review.html") });
 });
 
+document.getElementById("openStory").addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("story.html") });
+});
+
 // --- data menu (export/import/clear dropdown) ---
 const menuToggle = document.getElementById("menuToggle");
 const dataMenu = document.getElementById("dataMenu");
@@ -99,6 +103,85 @@ function speak(text, lang) {
   window.speechSynthesis.speak(utterance);
 }
 
+// --- Play All: read every word (and optionally its translation) in the current
+// list, one after another, chained via onend so playback never overlaps or
+// races the speechSynthesis queue. Stops automatically if the popup closes.
+const playAllBtn = document.getElementById("playAllBtn");
+const playAllBar = document.getElementById("playAllBar");
+const playAllIncludeTranslationEl = document.getElementById("playAllIncludeTranslation");
+const playAllRateEl = document.getElementById("playAllRate");
+
+let playingAll = false;
+let playAllIndex = 0;
+let playAllTimer = null;
+
+function stopPlayAll() {
+  playingAll = false;
+  clearTimeout(playAllTimer);
+  window.speechSynthesis.cancel();
+  playAllBtn.textContent = "▶ Play all";
+  playAllBtn.classList.remove("playing");
+  document.querySelectorAll(".entry.playing-now").forEach((el) => el.classList.remove("playing-now"));
+}
+
+function playAllStep() {
+  if (!playingAll) return;
+  if (playAllIndex >= currentFilteredList.length) {
+    stopPlayAll();
+    return;
+  }
+  const entry = currentFilteredList[playAllIndex];
+  document.querySelectorAll(".entry.playing-now").forEach((el) => el.classList.remove("playing-now"));
+  const rowEl = listEl.children[playAllIndex];
+  if (rowEl) {
+    rowEl.classList.add("playing-now");
+    rowEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  const rate = parseFloat(playAllRateEl.value) || 1;
+  const wordUtterance = new SpeechSynthesisUtterance(entry.word);
+  wordUtterance.rate = rate;
+  if (entry.sourceLang) wordUtterance.lang = entry.sourceLang;
+
+  wordUtterance.onend = () => {
+    if (!playingAll) return;
+    if (playAllIncludeTranslationEl.checked && entry.translation) {
+      const transUtterance = new SpeechSynthesisUtterance(entry.translation);
+      transUtterance.rate = rate;
+      transUtterance.lang = targetLangEl.value || "zh-CN";
+      transUtterance.onend = () => {
+        playAllTimer = setTimeout(advancePlayAll, 400);
+      };
+      window.speechSynthesis.speak(transUtterance);
+    } else {
+      playAllTimer = setTimeout(advancePlayAll, 400);
+    }
+  };
+
+  window.speechSynthesis.speak(wordUtterance);
+}
+
+function advancePlayAll() {
+  if (!playingAll) return;
+  playAllIndex += 1;
+  playAllStep();
+}
+
+playAllBtn.addEventListener("click", () => {
+  if (playingAll) {
+    stopPlayAll();
+    return;
+  }
+  if (currentFilteredList.length === 0) return;
+  playingAll = true;
+  playAllIndex = 0;
+  playAllBtn.textContent = "⏸ Stop";
+  playAllBtn.classList.add("playing");
+  playAllStep();
+});
+
+let currentFilteredList = []; // kept in sync with the last render() so Play All always plays what's on screen
+
 function render(filter = "") {
   const filtered = library
     .slice()
@@ -108,6 +191,8 @@ function render(filter = "") {
         e.word.toLowerCase().includes(filter.toLowerCase()) ||
         e.translation.toLowerCase().includes(filter.toLowerCase())
     );
+  currentFilteredList = filtered;
+  if (playingAll) stopPlayAll(); // the list under playback just changed — don't keep reading a stale order
 
   listEl.innerHTML = "";
   emptyEl.style.display = filtered.length === 0 ? "block" : "none";

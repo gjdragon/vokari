@@ -196,6 +196,7 @@ typeAnswerToggleEl.addEventListener("change", () => {
 });
 
 async function loadQueue() {
+  stopPlayAll();
   lastResultEl.textContent = "";
   graded = new Map();
   index = 0;
@@ -813,8 +814,102 @@ function goPrev() {
   }
 }
 
-prevBtn.addEventListener("click", goPrev);
-nextBtn.addEventListener("click", goNext);
+// --- Play All: reads through the whole session queue aloud, front-to-back,
+// revealing each card as it goes so the person can follow along visually too.
+// Chained via onend rather than a fixed-interval timer so playback never
+// overlaps or drifts out of sync with speechSynthesis's own queue.
+const playAllBtn = document.getElementById("playAllBtn");
+const playAllIncludeTranslationEl = document.getElementById("playAllIncludeTranslation");
+const playAllRateEl = document.getElementById("playAllRate");
+let playingAll = false;
+let playAllTimer = null;
+let targetLang = "zh-CN";
+chrome.storage.local.get("targetLang").then(({ targetLang: tl }) => {
+  if (tl) targetLang = tl;
+});
+
+function stopPlayAll() {
+  if (!playingAll) return;
+  playingAll = false;
+  clearTimeout(playAllTimer);
+  window.speechSynthesis.cancel();
+  playAllBtn.textContent = "▶ Play All";
+  playAllBtn.classList.remove("playing");
+}
+
+function playAllStep() {
+  if (!playingAll) return;
+  if (index >= queue.length) {
+    stopPlayAll();
+    progressEl.textContent = `${queue.length} of ${queue.length} — playback complete`;
+    return;
+  }
+  showCurrent();
+  // Force the card fully revealed for the duration of playback, regardless of
+  // "type the word" mode or whether it's already been graded this session —
+  // Play All is for listening, not testing.
+  revealed = true;
+  wordEl.style.visibility = "visible";
+  translationEl.classList.add("revealed");
+  translationEl.style.display = "block";
+  typeAnswerBoxEl.style.display = "none";
+  hintEl.style.display = "none";
+  const entry = current();
+  setSupportFields(entry, { revealed: true, typing: false });
+
+  const rate = parseFloat(playAllRateEl.value) || 1;
+  const wordUtterance = new SpeechSynthesisUtterance(entry.word);
+  wordUtterance.rate = rate;
+
+  wordUtterance.onend = () => {
+    if (!playingAll) return;
+    if (playAllIncludeTranslationEl.checked && entry.translation) {
+      const transUtterance = new SpeechSynthesisUtterance(entry.translation);
+      transUtterance.rate = rate;
+      transUtterance.lang = targetLang;
+      transUtterance.onend = () => {
+        playAllTimer = setTimeout(advancePlayAll, 500);
+      };
+      window.speechSynthesis.speak(transUtterance);
+    } else {
+      playAllTimer = setTimeout(advancePlayAll, 500);
+    }
+  };
+
+  window.speechSynthesis.speak(wordUtterance);
+}
+
+function advancePlayAll() {
+  if (!playingAll) return;
+  if (index < queue.length - 1) {
+    index += 1;
+    playAllStep();
+  } else {
+    stopPlayAll();
+    progressEl.textContent = `${queue.length} of ${queue.length} — playback complete`;
+  }
+}
+
+playAllBtn.addEventListener("click", () => {
+  if (playingAll) {
+    stopPlayAll();
+    return;
+  }
+  if (queue.length === 0) return;
+  playingAll = true;
+  playAllBtn.textContent = "⏸ Stop";
+  playAllBtn.classList.add("playing");
+  playAllStep();
+});
+
+prevBtn.addEventListener("click", () => {
+  stopPlayAll();
+  goPrev();
+});
+nextBtn.addEventListener("click", () => {
+  stopPlayAll();
+  goNext();
+});
 document.getElementById("knewIt").addEventListener("click", () => grade(true));
 document.getElementById("forgot").addEventListener("click", () => grade(false));
 document.getElementById("remembered").addEventListener("click", () => grade(true));

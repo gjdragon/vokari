@@ -235,6 +235,120 @@ Rules:
   return { sentence: parsed.sentence, wordsUsed: Array.isArray(parsed.wordsUsed) ? parsed.wordsUsed : [] };
 }
 
+// --- Story mode: turn a batch of saved words (e.g. "this week's new words")
+// into one short AI-generated story that weaves as many of them in as
+// possible. Highlighted words in the returned text are wrapped in **word**
+// (markdown-style bold) so the UI can render them as clickable highlights.
+const MAX_STORIES_PER_KEY = 10;
+const STORY_LENGTH_BY_SCOPE = {
+  due: "short (roughly 80-120 words, one paragraph)",
+  days: "short (roughly 80-120 words, one paragraph)",
+  weeks: "medium length (roughly 150-220 words, one to two paragraphs)",
+  months: "longer (roughly 250-350 words, a few short paragraphs)",
+};
+
+function storyKeyFor(scope, amount, levels) {
+  const lvl = Array.isArray(levels) && levels.length ? levels.slice().sort().join("") : "all";
+  return `${scope}|${scope === "due" ? "" : amount}|${lvl}`;
+}
+
+async function getStories(sKey) {
+  const { storyCache = {} } = await chrome.storage.local.get("storyCache");
+  return storyCache[sKey] || [];
+}
+
+async function addStory(sKey, record) {
+  const { storyCache = {} } = await chrome.storage.local.get("storyCache");
+  const list = trimRecordList([...(storyCache[sKey] || []), record], MAX_STORIES_PER_KEY);
+  storyCache[sKey] = list;
+  await chrome.storage.local.set({ storyCache });
+  return list;
+}
+
+async function toggleStoryFavorite(sKey, id) {
+  const { storyCache = {} } = await chrome.storage.local.get("storyCache");
+  const list = storyCache[sKey] || [];
+  const rec = list.find((s) => s.id === id);
+  if (rec) rec.favorite = !rec.favorite;
+  storyCache[sKey] = list;
+  await chrome.storage.local.set({ storyCache });
+  return list;
+}
+
+async function deleteStory(sKey, id) {
+  const { storyCache = {} } = await chrome.storage.local.get("storyCache");
+  const list = (storyCache[sKey] || []).filter((s) => s.id !== id);
+  storyCache[sKey] = list;
+  await chrome.storage.local.set({ storyCache });
+  return list;
+}
+
+async function generateStory(wordEntries, scope, previousStoryText) {
+  const { geminiApiKey, geminiModel } = await chrome.storage.local.get(["geminiApiKey", "geminiModel"]);
+  if (!geminiApiKey) {
+    throw new Error("No Gemini API key set. Add one in the extension popup under Sentence practice settings.");
+  }
+  if (wordEntries.length === 0) {
+    throw new Error("No words in this batch to build a story from.");
+  }
+  const model = (geminiModel || DEFAULT_GEMINI_MODEL).trim();
+  const words = wordEntries.map((w) => w.word);
+  const lengthHint = STORY_LENGTH_BY_SCOPE[scope] || STORY_LENGTH_BY_SCOPE.weeks;
+
+  const continuityBlock = previousStoryText
+    ? `This is a continuation of an ongoing story. Here is the previous installment for context (don't repeat it, just continue the same characters/setting naturally if that fits):\n"""\n${previousStoryText}\n"""\n\n`
+    : "";
+
+  const prompt = `You are writing a short, engaging story to help a language learner remember a batch of vocabulary words by seeing them used in context.
+
+${continuityBlock}Vocabulary words to include (use as many as possible, in any natural grammatical form): ${words.join(", ")}
+
+Rules:
+- Write ${lengthHint}.
+- Every time one of the listed vocabulary words (or a natural grammatical form of it, e.g. plural, past tense) appears in the story, wrap just that word in double asterisks like **word** — nothing else in the story should be wrapped this way.
+- Try to include every listed word at least once, but skip any that would force the story to be unnatural or nonsensical.
+- The story should be coherent, mildly entertaining, and easy to follow for a learner — simple sentence structures, no obscure vocabulary beyond the listed words.
+- Give it a short, catchy title.
+- Respond with ONLY valid JSON, no markdown code fences, no commentary, in exactly this shape:
+{"title": "...", "story": "... **word** ... **word2** ...", "wordsUsed": ["word1", "word2"]}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+    model
+  )}:generateContent?key=${encodeURIComponent(geminiApiKey)}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.8 },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`Gemini request failed (${res.status}): ${errText.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  const rawText = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+  const cleaned = rawText.replace(/```json|```/g, "").trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    parsed = { title: "Story", story: cleaned, wordsUsed: [] };
+  }
+  if (!parsed.story) throw new Error("Gemini response didn't include a story.");
+
+  return {
+    title: parsed.title || "Story",
+    story: parsed.story,
+    wordsUsed: Array.isArray(parsed.wordsUsed) ? parsed.wordsUsed : [],
+  };
+}
+
 // --- 3-level Leitner-style scheduling ---
 // Level 1 = best known (reviewed monthly) ... Level 3 = default/needs-work (reviewed
 // every 3 days). New words start at level 3. Grading only ever moves a word DOWN
@@ -437,6 +551,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const sentences = await deleteUserSentence(sentenceKeyFor(targetEntry), message.id);
       sendResponse({ ok: true, sentences });
     })();
+    return true;
+  }
+
+  // --- Story mode ---
+
+  if (message.type === "GET_STORY_WORDS") {
+    // Reuses the same scope/amount/level filtering as the review queue, since
+    // "this week's new words" is exactly what scope "weeks" already computes —
+    // just without touching due dates or review scheduling.
+    getReviewQueue(message.scope, message.amount, message.levels).then((words) => sendResponse({ ok: true, words }));
+    return true;
+  }
+
+  if (message.type === "GENERATE_STORY") {
+    (async () => {
+      try {
+        const sKey = storyKeyFor(message.scope, message.amount, message.levels);
+        const words = await getReviewQueue(message.scope, message.amount, message.levels);
+        const existing = await getStories(sKey);
+        const previousStoryText = message.continueFromPrevious && existing.length ? existing[existing.length - 1].story : null;
+        const { title, story, wordsUsed } = await generateStory(words, message.scope, previousStoryText);
+        const record = {
+          id: crypto.randomUUID(),
+          title,
+          story,
+          wordsUsed,
+          wordCount: words.length,
+          generatedAt: Date.now(),
+          favorite: false,
+        };
+        const stories = await addStory(sKey, record);
+        sendResponse({ ok: true, record, stories, words });
+      } catch (err) {
+        console.error(err);
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "GET_STORIES") {
+    const sKey = storyKeyFor(message.scope, message.amount, message.levels);
+    getStories(sKey).then((stories) => sendResponse({ ok: true, stories }));
+    return true;
+  }
+
+  if (message.type === "TOGGLE_STORY_FAVORITE") {
+    const sKey = storyKeyFor(message.scope, message.amount, message.levels);
+    toggleStoryFavorite(sKey, message.id).then((stories) => sendResponse({ ok: true, stories }));
+    return true;
+  }
+
+  if (message.type === "DELETE_STORY") {
+    const sKey = storyKeyFor(message.scope, message.amount, message.levels);
+    deleteStory(sKey, message.id).then((stories) => sendResponse({ ok: true, stories }));
     return true;
   }
 });

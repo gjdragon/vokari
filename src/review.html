@@ -147,6 +147,22 @@
       font-size: 11px;
     }
     #modeToggle input { margin: 0; accent-color: var(--gold); }
+    #scopeBar .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: "IBM Plex Mono", monospace;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 9px 4px 7px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 11px;
+    }
+    #scopeBar .checkbox-row input { margin: 0; accent-color: var(--gold); }
+    #playAllBtn.playing { background: var(--coral) !important; color: var(--gold-ink) !important; }
+    #word.playing-now, #card.playing-now #word { color: var(--gold); }
     #progress {
       font-family: "IBM Plex Mono", monospace;
       color: var(--text-tertiary);
@@ -889,6 +905,15 @@
       <input type="checkbox" id="typeAnswerToggle" />
       ⌨ Type the word
     </label>
+    <button id="playAllBtn" title="Read every card in this session aloud, one after another">▶ Play All</button>
+    <label class="checkbox-row" title="Also read the translation aloud after each word">
+      <input type="checkbox" id="playAllIncludeTranslation" checked />🔊 + translation
+    </label>
+    <select id="playAllRate" title="Playback speed">
+      <option value="0.8">Slow</option>
+      <option value="1" selected>Normal</option>
+      <option value="1.25">Fast</option>
+    </select>
   </div>
   <div id="fieldsBar" title="Choose which fields appear on the card once it's revealed">
     <span>Show on card</span>

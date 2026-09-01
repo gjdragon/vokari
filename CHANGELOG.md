@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Play All audio** — a "▶ Play all" control in the popup library list and a "▶ Play All" control on the review page reads through the current word list (or review session queue) aloud, one word after another, optionally including the translation in your target language. Adjustable speed, and it follows along visually (highlighting the word/card being read).
+- **Story mode** (new `story.html` page, linked from the popup as "📖 Story mode") — turns a chosen batch of saved words (last N days/weeks/months, any level) into one short AI-generated story via Gemini that weaves in as many of the words as it naturally can. Words are highlighted in the story text with the saved translation on hover, the whole story can be read aloud, and stories can be favorited, deleted, and optionally generated as a continuation of the previous one for the same word batch. Stories are cached per word-batch selection (up to 10 per batch, oldest non-favorite dropped first) and reuse the same Gemini API key already configured for sentence practice.
+
 ## [1.2.1] - 2026-08-29
 
 ### Changed
