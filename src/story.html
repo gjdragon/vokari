@@ -36,8 +36,7 @@
       align-items: center;
       padding: 16px 20px 40px;
     }
-    .page-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 12px; }
-    .brand-mark {
+    .page-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 12px; }    .brand-mark {
       position: relative;
       display: inline-block;
       font-family: "Fraunces", Georgia, serif;
@@ -58,6 +57,30 @@
       border-radius: 1px 6px 2px 5px;
     }
     .brand-tag { margin-top: 2px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-tertiary); }
+
+    #storyToolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    #storyToolbar button {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    #storyToolbar button:hover { background: var(--surface-raised); color: var(--paper); }
+    #storyImportStatus {
+      font-size: 11px;
+      margin-bottom: 10px;
+      min-height: 14px;
+    }
+    #storyImportStatus.error { color: var(--coral); }
+    #storyImportStatus.ok { color: var(--mint); }
 
     #scopeBar {
       display: flex;
@@ -228,8 +251,15 @@
     <span class="brand-tag">Story mode</span>
   </div>
 
+  <div id="storyToolbar">
+    <button id="exportStoriesBtn" title="Download every saved story as its own file (separate from your word list)">⬇ Export stories</button>
+    <button id="importStoriesBtn" title="Merge in a previously exported stories file">⇧ Import stories</button>
+    <input id="importStoriesFile" type="file" accept="application/json" style="display:none;" />
+  </div>
+  <div id="storyImportStatus"></div>
+
   <div id="scopeBar">
-    <span>Word batch</span>
+    <span>Word pool</span>
     <select id="scope">
       <option value="days">Last N days</option>
       <option value="weeks" selected>Last N weeks</option>
@@ -245,7 +275,7 @@
       <input type="checkbox" id="continuePrevious" />
       Continue story
     </label>
-    <button id="generateBtn">✨ Generate Story</button>
+    <button id="generateBtn">＋ New Story</button>
   </div>
 
   <div id="wordCountLine"></div>
@@ -266,7 +296,7 @@
     <div id="storyError"></div>
     <div id="emptyState">
       <h2>Turn new words into a story</h2>
-      <p>Pick a batch above — this week's new words, last month's, whichever level you like — and Vokari will write a short story that uses as many of them as it naturally can. Highlighted words show their translation on hover, and you can play the whole thing aloud once it's ready.</p>
+      <p>Pick a word pool above — this week's new words, last month's, whichever level you like — and hit "＋ New Story". Vokari picks whichever words fit naturally into a short, easy-to-follow story; it won't force every word in, so feel free to generate several short stories from the same pool instead of one long one. Highlighted words show their translation on hover, and you can play the whole thing aloud once it's ready.</p>
     </div>
     <button id="historyToggle" style="display:none;"></button>
     <div id="historyList"></div>

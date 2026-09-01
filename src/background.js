@@ -236,15 +236,16 @@ Rules:
 }
 
 // --- Story mode: turn a batch of saved words (e.g. "this week's new words")
-// into one short AI-generated story that weaves as many of them in as
-// possible. Highlighted words in the returned text are wrapped in **word**
-// (markdown-style bold) so the UI can render them as clickable highlights.
-const MAX_STORIES_PER_KEY = 10;
+// into a short, natural-sounding AI-generated story that uses some of them —
+// it does NOT have to use every word in the batch. Highlighted words in the
+// returned text are wrapped in **word** (markdown-style bold) so the UI can
+// render them as clickable highlights. Every story generated is kept (no
+// trimming) so the full set can be exported/imported later.
 const STORY_LENGTH_BY_SCOPE = {
-  due: "short (roughly 80-120 words, one paragraph)",
-  days: "short (roughly 80-120 words, one paragraph)",
-  weeks: "medium length (roughly 150-220 words, one to two paragraphs)",
-  months: "longer (roughly 250-350 words, a few short paragraphs)",
+  due: "short (roughly 60-120 words, one paragraph)",
+  days: "short (roughly 60-120 words, one paragraph)",
+  weeks: "short to medium (roughly 80-180 words, one or two short paragraphs)",
+  months: "medium length (roughly 120-250 words, a couple of short paragraphs)",
 };
 
 function storyKeyFor(scope, amount, levels) {
@@ -257,9 +258,45 @@ async function getStories(sKey) {
   return storyCache[sKey] || [];
 }
 
+async function getAllStories() {
+  const { storyCache = {} } = await chrome.storage.local.get("storyCache");
+  return storyCache;
+}
+
+// Merges an imported storyCache object into the existing one. Stories are
+// matched by id within each batch key, so importing the same file twice never
+// duplicates; if both sides have the same story, favorite wins if set on
+// either side. Nothing is ever dropped — this is the "keep everything" path
+// export/import relies on.
+async function importStories(incomingStoryCache) {
+  const { storyCache = {} } = await chrome.storage.local.get("storyCache");
+  const merged = { ...storyCache };
+  let added = 0;
+  let updated = 0;
+  for (const [sKey, incomingList] of Object.entries(incomingStoryCache || {})) {
+    if (!Array.isArray(incomingList)) continue;
+    const existingList = merged[sKey] || [];
+    const byId = new Map(existingList.map((s) => [s.id, s]));
+    incomingList.forEach((s) => {
+      if (!s || !s.id) return;
+      const existing = byId.get(s.id);
+      if (!existing) {
+        byId.set(s.id, s);
+        added++;
+      } else if (s.favorite && !existing.favorite) {
+        byId.set(s.id, { ...existing, favorite: true });
+        updated++;
+      }
+    });
+    merged[sKey] = Array.from(byId.values()).sort((a, b) => (a.generatedAt || 0) - (b.generatedAt || 0));
+  }
+  await chrome.storage.local.set({ storyCache: merged });
+  return { storyCache: merged, added, updated };
+}
+
 async function addStory(sKey, record) {
   const { storyCache = {} } = await chrome.storage.local.get("storyCache");
-  const list = trimRecordList([...(storyCache[sKey] || []), record], MAX_STORIES_PER_KEY);
+  const list = [...(storyCache[sKey] || []), record]; // keep every story ever generated
   storyCache[sKey] = list;
   await chrome.storage.local.set({ storyCache });
   return list;
@@ -299,15 +336,17 @@ async function generateStory(wordEntries, scope, previousStoryText) {
     ? `This is a continuation of an ongoing story. Here is the previous installment for context (don't repeat it, just continue the same characters/setting naturally if that fits):\n"""\n${previousStoryText}\n"""\n\n`
     : "";
 
-  const prompt = `You are writing a short, engaging story to help a language learner remember a batch of vocabulary words by seeing them used in context.
+  const prompt = `You are writing a short, natural-sounding story to help a language learner remember some vocabulary words by seeing them used in context.
 
-${continuityBlock}Vocabulary words to include (use as many as possible, in any natural grammatical form): ${words.join(", ")}
+${continuityBlock}Word pool to draw from (pick whichever of these fit naturally — you do NOT need to use most or all of them, a handful is completely fine, natural flow matters far more than coverage): ${words.join(
+    ", "
+  )}
 
 Rules:
 - Write ${lengthHint}.
-- Every time one of the listed vocabulary words (or a natural grammatical form of it, e.g. plural, past tense) appears in the story, wrap just that word in double asterisks like **word** — nothing else in the story should be wrapped this way.
-- Try to include every listed word at least once, but skip any that would force the story to be unnatural or nonsensical.
-- The story should be coherent, mildly entertaining, and easy to follow for a learner — simple sentence structures, no obscure vocabulary beyond the listed words.
+- Prioritize a coherent, natural, mildly entertaining story above all else. Never force a word in if it would make a sentence awkward or nonsensical — just leave it out.
+- Every time you DO use one of the pool words (or a natural grammatical form of it, e.g. plural, past tense), wrap just that word in double asterisks like **word** — nothing else in the story should be wrapped this way.
+- Simple sentence structures, easy for a learner to follow.
 - Give it a short, catchy title.
 - Respond with ONLY valid JSON, no markdown code fences, no commentary, in exactly this shape:
 {"title": "...", "story": "... **word** ... **word2** ...", "wordsUsed": ["word1", "word2"]}`;
@@ -321,7 +360,7 @@ Rules:
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.8 },
+      generationConfig: { temperature: 0.85 },
     }),
   });
 
@@ -594,6 +633,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_STORIES") {
     const sKey = storyKeyFor(message.scope, message.amount, message.levels);
     getStories(sKey).then((stories) => sendResponse({ ok: true, stories }));
+    return true;
+  }
+
+  if (message.type === "GET_ALL_STORIES") {
+    // Full backup for Export — every batch's stories, not just the one currently viewed.
+    getAllStories().then((storyCache) => sendResponse({ ok: true, storyCache }));
+    return true;
+  }
+
+  if (message.type === "IMPORT_STORIES") {
+    importStories(message.storyCache)
+      .then(({ storyCache, added, updated }) => sendResponse({ ok: true, storyCache, added, updated }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }
 

@@ -194,23 +194,6 @@
       white-space: nowrap;
     }
     #startReview:hover { filter: brightness(1.08); }
-    #quickNav {
-      margin: 10px 14px 0;
-      display: flex;
-    }
-    #openStory {
-      width: 100%;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--paper);
-      border-radius: 8px;
-      padding: 9px 10px;
-      font-size: 12.5px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-    }
-    #openStory:hover { background: var(--surface-raised); }
     .search-wrap {
       position: relative;
       margin: 12px 14px 0;
@@ -442,6 +425,8 @@
         <div id="dataMenu" class="dropdown-menu">
           <button id="openGeminiSettings" class="menu-item">✨ Gemini API settings</button>
           <div class="menu-divider"></div>
+          <button id="openStory" class="menu-item" title="Turn your new words into an AI-generated story">📖 Story mode</button>
+          <div class="menu-divider"></div>
           <button id="exportCsv" class="menu-item">⬇ Export CSV</button>
           <button id="exportAnki" class="menu-item">⬇ Export Anki</button>
           <div class="menu-divider"></div>
@@ -480,9 +465,6 @@
   <div id="reviewBanner">
     <span id="dueText"></span>
     <button id="startReview">Review</button>
-  </div>
-  <div id="quickNav">
-    <button id="openStory" title="Turn your new words into an AI-generated story">📖 Story mode</button>
   </div>
   <div class="search-wrap">
     <input id="search" type="text" placeholder="Search saved words…" />

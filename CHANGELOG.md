@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Play All audio** — a "▶ Play all" control in the popup library list and a "▶ Play All" control on the review page reads through the current word list (or review session queue) aloud, one word after another, optionally including the translation in your target language. Adjustable speed, and it follows along visually (highlighting the word/card being read).
-- **Story mode** (new `story.html` page, linked from the popup as "📖 Story mode") — turns a chosen batch of saved words (last N days/weeks/months, any level) into one short AI-generated story via Gemini that weaves in as many of the words as it naturally can. Words are highlighted in the story text with the saved translation on hover, the whole story can be read aloud, and stories can be favorited, deleted, and optionally generated as a continuation of the previous one for the same word batch. Stories are cached per word-batch selection (up to 10 per batch, oldest non-favorite dropped first) and reuse the same Gemini API key already configured for sentence practice.
+- **Story mode** (new `story.html` page, now tucked in the ⋯ menu since it's used less often than daily review) — turns a chosen word pool (last N days/weeks/months, any level) into a short, natural-sounding AI-generated story via Gemini. Stories pick whichever words fit naturally — they're never forced to cram in every word — so generating several short stories from the same pool is expected and encouraged rather than one long word-stuffed one. Words used are highlighted in the story text with the saved translation on hover, the whole story can be read aloud, and every story generated is kept permanently (favorited or not) so nothing is lost. Stories can be favorited, deleted, and optionally generated as a continuation of the previous one for the same word pool.
+- **Story export/import** — dedicated "⬇ Export stories" / "⇧ Import stories" buttons on the Story mode page save/restore every story ever generated (across every word pool) as its own `vokari_stories.json` file, kept completely separate from the word-list Export/Import (Sync) file. Import merges by story id, so importing the same file twice is safe.
+
+### Changed
+- Added the `unlimitedStorage` permission so the full story history can be kept without hitting the default storage quota.
 
 ## [1.2.1] - 2026-08-29
 

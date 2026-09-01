@@ -15,6 +15,10 @@ const playBtn = document.getElementById("playBtn");
 const deleteBtn = document.getElementById("deleteBtn");
 const historyToggle = document.getElementById("historyToggle");
 const historyListEl = document.getElementById("historyList");
+const exportStoriesBtn = document.getElementById("exportStoriesBtn");
+const importStoriesBtn = document.getElementById("importStoriesBtn");
+const importStoriesFile = document.getElementById("importStoriesFile");
+const storyImportStatusEl = document.getElementById("storyImportStatus");
 
 let currentWords = [];      // the word entries the current story was built from
 let currentStories = [];    // all cached stories for the current scope/amount/levels key
@@ -251,3 +255,67 @@ playBtn.addEventListener("click", () => {
 });
 
 refreshAll();
+
+// --- Export / Import: a dedicated file for stories, kept separate from the
+// word-list export/import (Sync) so the two never get mixed up. Exports every
+// story ever generated across every word-pool batch, not just the one
+// currently on screen.
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  chrome.downloads.download({ url, filename, saveAs: true });
+}
+
+function showStoryImportStatus(message, isError = false) {
+  storyImportStatusEl.textContent = message;
+  storyImportStatusEl.classList.toggle("error", isError);
+  storyImportStatusEl.classList.toggle("ok", !isError);
+}
+
+exportStoriesBtn.addEventListener("click", async () => {
+  const response = await chrome.runtime.sendMessage({ type: "GET_ALL_STORIES" });
+  if (!response || !response.ok) {
+    showStoryImportStatus("Couldn't export stories — try again.", true);
+    return;
+  }
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    source: "Vokari",
+    kind: "stories",
+    version: 1,
+    storyCache: response.storyCache,
+  };
+  const total = Object.values(response.storyCache || {}).reduce((sum, list) => sum + (list?.length || 0), 0);
+  downloadFile(JSON.stringify(payload, null, 2), "vokari_stories.json", "application/json");
+  showStoryImportStatus(`Exported ${total} stor${total === 1 ? "y" : "ies"}.`);
+});
+
+importStoriesBtn.addEventListener("click", () => importStoriesFile.click());
+
+importStoriesFile.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  e.target.value = ""; // allow re-selecting the same file later
+  if (!file) return;
+
+  let incomingStoryCache;
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    incomingStoryCache = parsed && typeof parsed === "object" ? parsed.storyCache : null;
+    if (!incomingStoryCache || typeof incomingStoryCache !== "object") {
+      throw new Error("This doesn't look like a Vokari stories export file.");
+    }
+  } catch (err) {
+    showStoryImportStatus(`Import failed: ${err.message}`, true);
+    return;
+  }
+
+  const response = await chrome.runtime.sendMessage({ type: "IMPORT_STORIES", storyCache: incomingStoryCache });
+  if (!response || !response.ok) {
+    showStoryImportStatus(`Import failed: ${response?.error || "unknown error"}`, true);
+    return;
+  }
+  showStoryImportStatus(`Imported: ${response.added} new stor${response.added === 1 ? "y" : "ies"}, ${response.updated} updated.`);
+  await refreshStories();
+});
