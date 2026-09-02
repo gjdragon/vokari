@@ -13,6 +13,12 @@ const emptyStateEl = document.getElementById("emptyState");
 const favoriteBtn = document.getElementById("favoriteBtn");
 const playBtn = document.getElementById("playBtn");
 const deleteBtn = document.getElementById("deleteBtn");
+const generateStoryAudioBtn = document.getElementById("generateStoryAudioBtn");
+const storyAudioBar = document.getElementById("storyAudioBar");
+const downloadStoryAudioBtn = document.getElementById("downloadStoryAudioBtn");
+const uploadStoryAudioBtn = document.getElementById("uploadStoryAudioBtn");
+const storyAudioStatusEl = document.getElementById("storyAudioStatus");
+let lastStoryAudioBase64 = null;
 const historyToggle = document.getElementById("historyToggle");
 const historyListEl = document.getElementById("historyList");
 const exportStoriesBtn = document.getElementById("exportStoriesBtn");
@@ -65,6 +71,10 @@ function showStory(record) {
   storyMetaEl.textContent = `${record.wordsUsed.length} of ${record.wordCount} words used · generated ${date}`;
   favoriteBtn.textContent = record.favorite ? "★" : "☆";
   favoriteBtn.classList.toggle("active", !!record.favorite);
+  lastStoryAudioBase64 = null;
+  storyAudioBar.style.display = "none";
+  storyAudioStatusEl.textContent = "";
+  storyAudioStatusEl.className = "";
 }
 
 function showEmpty() {
@@ -255,6 +265,75 @@ playBtn.addEventListener("click", () => {
 });
 
 refreshAll();
+
+// --- Story audio: turn the currently displayed story into a downloadable WAV
+// via Gemini TTS, and optionally push it straight to Google Drive.
+
+function setStoryAudioStatus(message, kind) {
+  storyAudioStatusEl.textContent = message;
+  storyAudioStatusEl.className = kind === "error" ? "error" : kind === "ok" ? "ok" : "";
+}
+
+function downloadWavFile(base64Wav, filename) {
+  const binary = atob(base64Wav);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: "audio/wav" });
+  const url = URL.createObjectURL(blob);
+  chrome.downloads.download({ url, filename, saveAs: true });
+}
+
+generateStoryAudioBtn.addEventListener("click", async () => {
+  if (!currentStory) return;
+  stopPlayStory();
+  lastStoryAudioBase64 = null;
+  storyAudioBar.style.display = "none";
+  generateStoryAudioBtn.disabled = true;
+  const originalLabel = generateStoryAudioBtn.textContent;
+  generateStoryAudioBtn.textContent = "…";
+  setStoryAudioStatus("Generating audio, this can take a few seconds…", null);
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "GENERATE_STORY_AUDIO", storyText: currentStory.story });
+    if (!response || !response.ok) throw new Error(response?.error || "Lost connection to the extension's background service.");
+    lastStoryAudioBase64 = response.audioBase64;
+    storyAudioBar.style.display = "flex";
+    setStoryAudioStatus("Audio ready.", "ok");
+  } catch (err) {
+    setStoryAudioStatus(err.message, "error");
+  } finally {
+    generateStoryAudioBtn.disabled = false;
+    generateStoryAudioBtn.textContent = originalLabel;
+  }
+});
+
+downloadStoryAudioBtn.addEventListener("click", () => {
+  if (!lastStoryAudioBase64 || !currentStory) return;
+  const safeTitle = currentStory.title.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 40);
+  downloadWavFile(lastStoryAudioBase64, `vokari_story_${safeTitle || "untitled"}.wav`);
+});
+
+uploadStoryAudioBtn.addEventListener("click", async () => {
+  if (!lastStoryAudioBase64 || !currentStory) return;
+  uploadStoryAudioBtn.disabled = true;
+  const originalLabel = uploadStoryAudioBtn.textContent;
+  uploadStoryAudioBtn.textContent = "☁ Uploading…";
+  setStoryAudioStatus("", null);
+  try {
+    const safeTitle = currentStory.title.replace(/[^a-z0-9]+/gi, "_").toLowerCase().slice(0, 40);
+    const response = await chrome.runtime.sendMessage({
+      type: "UPLOAD_AUDIO_TO_DRIVE",
+      filename: `vokari_story_${safeTitle || "untitled"}.wav`,
+      audioBase64: lastStoryAudioBase64,
+    });
+    if (!response || !response.ok) throw new Error(response?.error || "Lost connection to the extension's background service.");
+    setStoryAudioStatus("Uploaded to Google Drive ✓", "ok");
+  } catch (err) {
+    setStoryAudioStatus(err.message, "error");
+  } finally {
+    uploadStoryAudioBtn.disabled = false;
+    uploadStoryAudioBtn.textContent = originalLabel;
+  }
+});
 
 // --- Export / Import: a dedicated file for stories, kept separate from the
 // word-list export/import (Sync) so the two never get mixed up. Exports every

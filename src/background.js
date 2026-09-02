@@ -388,6 +388,201 @@ Rules:
   };
 }
 
+// --- Audio export: turn word lists / stories into a single downloadable WAV
+// file (and optionally upload it straight to Google Drive) using Gemini's
+// native text-to-speech models. Word batches are split into chunks to stay
+// well under the TTS context window and so one failed request doesn't lose
+// the whole batch; all chunks share the same PCM format (24kHz, mono,
+// 16-bit) so they concatenate into one continuous WAV.
+const DEFAULT_TTS_MODEL = "gemini-2.5-flash-preview-tts";
+const TTS_VOICE = "Kore";
+const TTS_WORDS_PER_CHUNK = 20;
+const TTS_SAMPLE_RATE = 24000;
+
+function base64ToUint8Array(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function uint8ArrayToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function synthesizeSpeechChunk(transcript, attempt = 1) {
+  const { geminiApiKey } = await chrome.storage.local.get("geminiApiKey");
+  if (!geminiApiKey) {
+    throw new Error("No Gemini API key set. Add one in the extension popup under Sentence practice settings.");
+  }
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_TTS_MODEL}:generateContent?key=${encodeURIComponent(
+    geminiApiKey
+  )}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: transcript }] }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: TTS_VOICE } } },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    if (attempt < 2) return synthesizeSpeechChunk(transcript, attempt + 1);
+    throw new Error(`Speech generation failed (${res.status}): ${errText.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const b64 = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  if (!b64) {
+    // The TTS model occasionally returns text tokens instead of audio — a
+    // single retry clears the vast majority of these (per Google's own docs).
+    if (attempt < 2) return synthesizeSpeechChunk(transcript, attempt + 1);
+    throw new Error("Gemini didn't return audio for this chunk. Try again.");
+  }
+  return base64ToUint8Array(b64); // raw 16-bit PCM, mono, 24kHz
+}
+
+function buildWavFile(pcmChunks, sampleRate = TTS_SAMPLE_RATE, channels = 1, bitsPerSample = 16) {
+  const totalLength = pcmChunks.reduce((sum, c) => sum + c.length, 0);
+  const blockAlign = (channels * bitsPerSample) / 8;
+  const byteRate = sampleRate * blockAlign;
+  const buffer = new ArrayBuffer(44 + totalLength);
+  const view = new DataView(buffer);
+
+  const writeString = (offset, str) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + totalLength, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, "data");
+  view.setUint32(40, totalLength, true);
+
+  let offset = 44;
+  const bytes = new Uint8Array(buffer);
+  for (const chunk of pcmChunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes;
+}
+
+function chunkArray(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+async function generateWordAudio(entries, includeTranslation) {
+  if (!entries || entries.length === 0) throw new Error("No words to turn into audio.");
+  const chunks = chunkArray(entries, TTS_WORDS_PER_CHUNK);
+  const pcmChunks = [];
+  for (const chunk of chunks) {
+    const lines = chunk
+      .map((e) => (includeTranslation && e.translation ? `${e.word} [pause] ${e.translation}` : e.word))
+      .join(" [pause] ");
+    const transcript = `Read the following vocabulary list aloud, clearly and steadily, in a neutral, natural voice. Say only what's written below, in order, pausing briefly wherever you see [pause]. Do not add any extra words, numbers, or commentary of your own.
+
+TRANSCRIPT:
+${lines}`;
+    const pcm = await synthesizeSpeechChunk(transcript);
+    pcmChunks.push(pcm);
+    await new Promise((resolve) => setTimeout(resolve, 250)); // gentle on rate limits between chunks
+  }
+  return uint8ArrayToBase64(buildWavFile(pcmChunks));
+}
+
+async function generateStoryAudio(storyText) {
+  const plainText = storyText.replace(/\*\*/g, "");
+  const transcript = `Read the following short story aloud clearly and naturally, like a calm audiobook narrator. Say only the story below — no introduction, no commentary of your own.
+
+TRANSCRIPT:
+${plainText}`;
+  const pcm = await synthesizeSpeechChunk(transcript);
+  return uint8ArrayToBase64(buildWavFile([pcm]));
+}
+
+// --- Google Drive upload, via chrome.identity OAuth (drive.file scope — this
+// extension can only see/manage files it created itself, never the rest of
+// the user's Drive). Requires the extension's own OAuth client_id to be
+// configured in manifest.json; see README for setup steps.
+
+function getDriveAuthToken(interactive = true) {
+  return new Promise((resolve, reject) => {
+    chrome.identity.getAuthToken({ interactive }, (token) => {
+      if (chrome.runtime.lastError || !token) {
+        reject(
+          new Error(
+            chrome.runtime.lastError?.message ||
+              "Couldn't get a Google Drive authorization token. Check the Drive setup steps in the README."
+          )
+        );
+        return;
+      }
+      resolve(token);
+    });
+  });
+}
+
+async function uploadAudioToDrive(filename, base64Wav) {
+  const token = await getDriveAuthToken(true);
+  const boundary = "vokari_boundary_" + Date.now();
+  const metadata = { name: filename, mimeType: "audio/wav" };
+  const pcmBytes = base64ToUint8Array(base64Wav);
+
+  const encoder = new TextEncoder();
+  const preMedia = encoder.encode(
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(
+      metadata
+    )}\r\n--${boundary}\r\nContent-Type: audio/wav\r\n\r\n`
+  );
+  const postMedia = encoder.encode(`\r\n--${boundary}--`);
+  const body = new Uint8Array(preMedia.length + pcmBytes.length + postMedia.length);
+  body.set(preMedia, 0);
+  body.set(pcmBytes, preMedia.length);
+  body.set(postMedia, preMedia.length + pcmBytes.length);
+
+  const res = await fetch(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    }
+  );
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    if (res.status === 401) {
+      // Cached token went stale — clear it so the next attempt fetches a fresh one.
+      await new Promise((resolve) => chrome.identity.removeCachedAuthToken({ token }, resolve));
+    }
+    throw new Error(`Drive upload failed (${res.status}): ${errText.slice(0, 200)}`);
+  }
+  return res.json(); // { id, webViewLink }
+}
+
 // --- 3-level Leitner-style scheduling ---
 // Level 1 = best known (reviewed monthly) ... Level 3 = default/needs-work (reviewed
 // every 3 days). New words start at level 3. Grading only ever moves a word DOWN
@@ -658,6 +853,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "DELETE_STORY") {
     const sKey = storyKeyFor(message.scope, message.amount, message.levels);
     deleteStory(sKey, message.id).then((stories) => sendResponse({ ok: true, stories }));
+    return true;
+  }
+
+  // --- Audio export ---
+
+  if (message.type === "GENERATE_WORD_AUDIO") {
+    (async () => {
+      try {
+        const audioBase64 = await generateWordAudio(message.entries, message.includeTranslation);
+        sendResponse({ ok: true, audioBase64 });
+      } catch (err) {
+        console.error(err);
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "GENERATE_STORY_AUDIO") {
+    (async () => {
+      try {
+        const audioBase64 = await generateStoryAudio(message.storyText);
+        sendResponse({ ok: true, audioBase64 });
+      } catch (err) {
+        console.error(err);
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+
+  if (message.type === "UPLOAD_AUDIO_TO_DRIVE") {
+    (async () => {
+      try {
+        const result = await uploadAudioToDrive(message.filename, message.audioBase64);
+        sendResponse({ ok: true, ...result });
+      } catch (err) {
+        console.error(err);
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
     return true;
   }
 });

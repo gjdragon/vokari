@@ -163,6 +163,50 @@
     #scopeBar .checkbox-row input { margin: 0; accent-color: var(--gold); }
     #playAllBtn.playing { background: var(--coral) !important; color: var(--gold-ink) !important; }
     #word.playing-now, #card.playing-now #word { color: var(--gold); }
+    #audioExportBar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 10px;
+      margin-top: -6px;
+      margin-bottom: 14px;
+      font-size: 11.5px;
+    }
+    #audioExportBar > span:first-child { color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
+    #audioExportBar button {
+      background: var(--gold);
+      color: var(--gold-ink);
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    #audioExportBar button:hover { filter: brightness(1.08); }
+    #audioExportBar button:disabled { opacity: 0.5; cursor: default; filter: none; }
+    #audioExportBar #downloadAudioBtn,
+    #audioExportBar #uploadDriveBtn {
+      background: var(--ink-900);
+      color: var(--paper);
+      border: 1px solid var(--border);
+    }
+    #audioExportStatus {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: -10px;
+      margin-bottom: 12px;
+      min-height: 14px;
+    }
+    #audioExportStatus.error { color: var(--coral); }
+    #audioExportStatus.ok { color: var(--mint); }
     #progress {
       font-family: "IBM Plex Mono", monospace;
       color: var(--text-tertiary);
@@ -915,6 +959,16 @@
       <option value="1.25">Fast</option>
     </select>
   </div>
+  <div id="audioExportBar">
+    <span>Audio file</span>
+    <label class="checkbox-row" title="Include the translation for each word in the audio">
+      <input type="checkbox" id="audioIncludeTranslation" checked />+ translation
+    </label>
+    <button id="generateAudioBtn">🎧 Create Audio File</button>
+    <button id="downloadAudioBtn" style="display:none;">⬇ Download</button>
+    <button id="uploadDriveBtn" style="display:none;">☁ Save to Drive</button>
+  </div>
+  <div id="audioExportStatus"></div>
   <div id="fieldsBar" title="Choose which fields appear on the card once it's revealed">
     <span>Show on card</span>
     <label><input type="checkbox" class="field-cb" value="context" checked />Context</label>

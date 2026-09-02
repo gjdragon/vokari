@@ -197,6 +197,10 @@ typeAnswerToggleEl.addEventListener("change", () => {
 
 async function loadQueue() {
   stopPlayAll();
+  lastAudioBase64 = null;
+  downloadAudioBtn.style.display = "none";
+  uploadDriveBtn.style.display = "none";
+  setAudioStatus("", null);
   lastResultEl.textContent = "";
   graded = new Map();
   index = 0;
@@ -909,6 +913,91 @@ prevBtn.addEventListener("click", () => {
 nextBtn.addEventListener("click", () => {
   stopPlayAll();
   goNext();
+});
+
+// --- Export Audio: bundles the current session's words (+ optional
+// translations) into a single downloadable WAV file via Gemini TTS, generated
+// server-side in one background message so it survives even if this tab loses
+// focus mid-generation. Can also be pushed straight to Google Drive.
+const generateAudioBtn = document.getElementById("generateAudioBtn");
+const downloadAudioBtn = document.getElementById("downloadAudioBtn");
+const uploadDriveBtn = document.getElementById("uploadDriveBtn");
+const audioIncludeTranslationEl = document.getElementById("audioIncludeTranslation");
+const audioExportStatusEl = document.getElementById("audioExportStatus");
+let lastAudioBase64 = null;
+
+function setAudioStatus(message, kind) {
+  audioExportStatusEl.textContent = message;
+  audioExportStatusEl.classList.toggle("error", kind === "error");
+  audioExportStatusEl.classList.toggle("ok", kind === "ok");
+}
+
+function downloadWavFile(base64Wav, filename) {
+  const binary = atob(base64Wav);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: "audio/wav" });
+  const url = URL.createObjectURL(blob);
+  chrome.downloads.download({ url, filename, saveAs: true });
+}
+
+generateAudioBtn.addEventListener("click", async () => {
+  if (queue.length === 0) return;
+  stopPlayAll();
+  lastAudioBase64 = null;
+  downloadAudioBtn.style.display = "none";
+  uploadDriveBtn.style.display = "none";
+  generateAudioBtn.disabled = true;
+  const originalLabel = generateAudioBtn.textContent;
+  const chunkCount = Math.ceil(queue.length / 20);
+  generateAudioBtn.textContent = `🎧 Generating… (~${chunkCount * 5}s)`;
+  setAudioStatus("", null);
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "GENERATE_WORD_AUDIO",
+      entries: queue.map((e) => ({ word: e.word, translation: e.translation })),
+      includeTranslation: audioIncludeTranslationEl.checked,
+    });
+    if (!response || !response.ok) throw new Error(response?.error || "Lost connection to the extension's background service.");
+    lastAudioBase64 = response.audioBase64;
+    downloadAudioBtn.style.display = "inline-block";
+    uploadDriveBtn.style.display = "inline-block";
+    setAudioStatus(`Audio ready — ${queue.length} words.`, "ok");
+  } catch (err) {
+    setAudioStatus(err.message, "error");
+  } finally {
+    generateAudioBtn.disabled = false;
+    generateAudioBtn.textContent = originalLabel;
+  }
+});
+
+downloadAudioBtn.addEventListener("click", () => {
+  if (!lastAudioBase64) return;
+  const stamp = new Date().toISOString().slice(0, 10);
+  downloadWavFile(lastAudioBase64, `vokari_words_${stamp}.wav`);
+});
+
+uploadDriveBtn.addEventListener("click", async () => {
+  if (!lastAudioBase64) return;
+  uploadDriveBtn.disabled = true;
+  const originalLabel = uploadDriveBtn.textContent;
+  uploadDriveBtn.textContent = "☁ Uploading…";
+  setAudioStatus("", null);
+  try {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const response = await chrome.runtime.sendMessage({
+      type: "UPLOAD_AUDIO_TO_DRIVE",
+      filename: `vokari_words_${stamp}.wav`,
+      audioBase64: lastAudioBase64,
+    });
+    if (!response || !response.ok) throw new Error(response?.error || "Lost connection to the extension's background service.");
+    setAudioStatus("Uploaded to Google Drive ✓", "ok");
+  } catch (err) {
+    setAudioStatus(err.message, "error");
+  } finally {
+    uploadDriveBtn.disabled = false;
+    uploadDriveBtn.textContent = originalLabel;
+  }
 });
 document.getElementById("knewIt").addEventListener("click", () => grade(true));
 document.getElementById("forgot").addEventListener("click", () => grade(false));

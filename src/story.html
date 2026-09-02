@@ -163,6 +163,26 @@
     #storyActions button:hover { background: var(--surface-raised); }
     #storyActions button.active { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); }
     #storyActions button.playing { background: var(--coral); color: var(--gold-ink); border-color: var(--coral); }
+    #storyAudioBar {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    #storyAudioBar button {
+      background: var(--ink-900);
+      border: 1px solid var(--border);
+      color: var(--paper);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    #storyAudioBar button:hover { background: var(--surface-raised); }
+    #storyAudioStatus { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; }
+    #storyAudioStatus.error { color: var(--coral); }
+    #storyAudioStatus.ok { color: var(--mint); }
     #storyText { font-size: 15.5px; line-height: 1.75; color: var(--paper); white-space: pre-wrap; }
     #storyText mark {
       background: none;
@@ -287,10 +307,16 @@
         <div id="storyActions">
           <button id="favoriteBtn" title="Save as favorite">☆</button>
           <button id="playBtn" title="Read the story aloud">🔊</button>
+          <button id="generateStoryAudioBtn" title="Turn this story into a downloadable audio file">🎧</button>
           <button id="deleteBtn" title="Delete this story">🗑</button>
         </div>
       </div>
       <div id="storyText"></div>
+      <div id="storyAudioBar" style="display:none;">
+        <button id="downloadStoryAudioBtn">⬇ Download audio</button>
+        <button id="uploadStoryAudioBtn">☁ Save to Drive</button>
+      </div>
+      <div id="storyAudioStatus"></div>
       <div id="storyMeta"></div>
     </div>
     <div id="storyError"></div>

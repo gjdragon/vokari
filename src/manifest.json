@@ -1,13 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Vokari — AI-powered vocabulary companion",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Highlight a word on any page, see its translation, and save it to a vocabulary library with AI example sentences, writing practice, and spaced-repetition review.",
-  "permissions": ["storage", "unlimitedStorage", "activeTab", "downloads", "alarms", "notifications"],
+  "permissions": ["storage", "unlimitedStorage", "activeTab", "downloads", "alarms", "notifications", "identity"],
   "host_permissions": [
     "https://translate.googleapis.com/*",
-    "https://generativelanguage.googleapis.com/*"
+    "https://generativelanguage.googleapis.com/*",
+    "https://www.googleapis.com/*"
   ],
+  "oauth2": {
+    "client_id": "505412391907-7naa0dttms7vhbpr4hu83hh34fvqcfeg.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/drive.file"]
+  },
   "background": {
     "service_worker": "background.js"
   },

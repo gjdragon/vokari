@@ -127,6 +127,41 @@ Below the example-sentence panel, a second panel lets you write your **own** sen
 - **Independent from example sentences**: this is a completely separate feature/history from the ✨ example-sentence generator above — writing your own sentences doesn't affect or get affected by the AI-generated examples, and vice versa.
 - **Syncing across PCs**: writing-practice history (including favorites) is included automatically in **Export (Sync)** / **Import (Sync)**, right alongside your word library and example-sentence history.
 
+## Story mode (Gemini API)
+
+Accessible from the toolbar popup's **⋯ menu → 📖 Story mode** (it opens its own tab). Turns a batch of saved words into a short, natural-sounding AI-generated story via Gemini, as a memory aid — seeing several words woven into one story is a different (and often stickier) kind of practice than isolated flashcards.
+
+- **Word pool, not a strict word list**: pick a scope (last N days/weeks/months) and levels, same filtering as review — but the story only uses whichever words fit naturally. It's never forced to cram every word in, so generating several short stories from the same pool is expected, not a bug.
+- **＋ New Story** always adds a new story rather than replacing the last one — every story you generate is kept permanently (no cap, no auto-trimming), so your story history only grows.
+- Words actually used are highlighted in the story text; hover one to see its saved translation.
+- **Continue story** checkbox feeds the previous story back in as context, so consecutive generations can continue the same characters/setting instead of starting fresh each time.
+- 🔊 reads the whole story aloud (browser TTS); ☆ favorites it; 🗑 deletes it. Earlier stories for the same word pool are listed under "Earlier stories."
+- **Export/Import stories**: separate "⬇ Export stories" / "⇧ Import stories" buttons at the top of the Story mode page save/restore every story you've ever generated (across every word pool) as a `vokari_stories.json` file — deliberately kept separate from the word-library Export/Import (Sync) file so the two never get mixed up. Import merges by story id, so importing the same file twice never duplicates anything.
+
+## Audio export & Google Drive sync
+
+Two places let you turn saved words/stories into an actual downloadable audio file, using Gemini's text-to-speech models (separate from the free browser "Play All" feature — this produces a real `.wav` file you can keep, share, or sync to your phone):
+
+- **Review page** → **🎧 Create Audio File** in the scope bar: bundles the current session's words (optionally + translations) into one combined `.wav`.
+- **Story mode** → the 🎧 icon next to a story: turns that story into one `.wav`.
+
+Once generated, **⬇ Download** saves it locally like any other export. **☁ Save to Drive** uploads it directly to your Google Drive — from there it's playable on your phone via the Google Drive app (Android/iOS) without any extra syncing step.
+
+**Drive upload requires a one-time setup** you do yourself in Google Cloud Console — Vokari can't provision this for you, since it has to be tied to your own Google account and this specific copy of the extension:
+
+1. Load the extension unpacked (see [How to load it](#how-to-load-it-unpacked-for-developmentpersonal-use)) if you haven't already, then find its **Extension ID** on `chrome://extensions` (a long string under the extension's name). Keep the extension loaded from the same folder path going forward — the ID changes if you move/re-extract the folder, which would break this setup.
+2. Go to [Google Cloud Console](https://console.cloud.google.com/) → create a new project (or reuse one you already have).
+3. **APIs & Services → Library** → search **Google Drive API** → **Enable**.
+4. **APIs & Services → OAuth consent screen** → choose **External**, fill in the required fields (app name, your email), and add your own Google account under **Test users**. It's fine to leave the app in "Testing" status — no Google verification needed for personal use with the `drive.file` scope.
+5. **APIs & Services → Credentials → Create Credentials → OAuth client ID** → Application type **Chrome Extension** → paste in the Extension ID from step 1 → Create.
+6. Copy the generated Client ID (looks like `123456-abc...apps.googleusercontent.com`) into `src/manifest.json`, replacing the placeholder in the `oauth2.client_id` field.
+7. Reload the extension on `chrome://extensions`.
+
+The first time you click **☁ Save to Drive**, Chrome will show a Google sign-in/consent popup — approve it once and it's remembered. Vokari requests the narrow `drive.file` scope, meaning it can only see/manage files it created itself, never the rest of your Drive.
+
+- **Cost note**: audio generation uses your Gemini API key's TTS quota, billed separately from text generation — check [ai.google.dev/gemini-api/docs/pricing](https://ai.google.dev/gemini-api/docs/pricing) for current TTS rates before exporting very large word batches.
+- Word audio is generated in batches of ~20 words per API call (to stay well under the model's context limit) and concatenated into one continuous file, so larger batches take proportionally longer — the button shows a rough time estimate while generating.
+
 ## Popup collision with other extensions (e.g. Google Translate's own popup)
 
 If you also use the Google Translate browser extension, its own select-to-translate popup and this extension's popup can compete for the same spot below your selection. To handle this, the extension now:
