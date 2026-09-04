@@ -5,7 +5,7 @@ All notable changes to Vokari will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2026-09-04
 
 ### Added
 - **Play All audio** — a "▶ Play all" control in the popup library list and a "▶ Play All" control on the review page reads through the current word list (or review session queue) aloud, one word after another, optionally including the translation in your target language. Adjustable speed, and it follows along visually (highlighting the word/card being read).
@@ -75,7 +75,8 @@ Initial public release.
 - Popup-collision handling so the extension's translation popup avoids overlapping other extensions' (e.g. Google Translate's) select-to-translate popups.
 - Manual cross-device sync via Export (Sync) / Import (Sync) JSON files, with field-level merge logic that preserves whichever copy is further along and never regresses review progress. Includes example-sentence and writing-practice history/favorites in the sync payload.
 
-[Unreleased]: https://github.com/gjdragon/vokari/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/gjdragon/vokari/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/gjdragon/vokari/compare/v1.2.1...v2.0.0
 [1.2.1]: https://github.com/gjdragon/vokari/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/gjdragon/vokari/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/gjdragon/vokari/compare/v1.0.0...v1.1.0

@@ -1,6 +1,6 @@
 # Vokari — AI-powered vocabulary companion
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![Manifest](https://img.shields.io/badge/manifest-v3-informational)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
@@ -15,6 +15,7 @@ Highlight any word/phrase on a webpage → see a translation popup → click Sav
 - [Notes / things to know](#notes--things-to-know)
 - [Daily flashcard review (3-level system)](#daily-flashcard-review-3-level-system)
 - [Pronunciation / sound](#pronunciation--sound)
+- [Play All (listen to a whole list)](#play-all-listen-to-a-whole-list)
 - [Sentence practice (Gemini API)](#sentence-practice-gemini-api)
 - [Writing practice (Gemini API)](#writing-practice-gemini-api)
 - [Popup collision with other extensions](#popup-collision-with-other-extensions-eg-google-translates-own-popup)
@@ -100,6 +101,16 @@ Two things worth knowing:
 - **On the review card**, the 🔊 button works *before* you reveal the translation, so you can practice listening/pronunciation as its own recall step, separate from checking the meaning.
 
 If you ever want higher-fidelity, human-recorded audio, that's a separate future add-on (e.g. the Free Dictionary API's audio clips) rather than an extension of this — it only covers English and would need a new host permission, so it's not part of the default setup.
+
+## Play All (listen to a whole list)
+
+A **▶ Play all** control — in the toolbar popup's library list and again on the review page — reads through the current list of words aloud, one after another, using the same offline browser TTS as the 🔊 buttons.
+
+- Works on whatever's currently on screen: the popup's search/filtered list, or the review page's due/scope-filtered session queue.
+- **Include translation** checkbox reads the translation right after the word (skipped if the word has none saved yet).
+- **Speed** control adjusts playback rate.
+- Follows along visually — the word/card currently being read is highlighted — so it doubles as a listening + reading pass, not just audio.
+- Click **⏸ Stop** (the button toggles) to end playback early; it also stops automatically if the underlying list changes (e.g. you re-filter mid-playback), so it never reads a stale order.
 
 ## Sentence practice (Gemini API)
 
@@ -195,14 +206,17 @@ It's a manual two-click sync rather than automatic/real-time, but it keeps the e
 | Permission | Why Vokari needs it |
 |---|---|
 | `storage` | Save your vocabulary library, review progress, and settings locally via `chrome.storage.local`. |
+| `unlimitedStorage` | Lift the default storage quota so your full story history (Story mode keeps every story ever generated) doesn't get capped. |
 | `activeTab` | Read the current tab's selection/context when you highlight a word. |
-| `downloads` | Save CSV/Anki/JSON exports to your computer. |
+| `downloads` | Save CSV/Anki/JSON/audio exports to your computer. |
 | `alarms` | Run the once-daily due-words check. |
 | `notifications` | Show the Chrome notification when words are due. |
+| `identity` | Sign in with your Google account when you use **☁ Save to Drive**, so an audio export can be uploaded directly to your own Drive. |
 | `translate.googleapis.com` (host) | Send the selected word to Google's public translate endpoint. |
-| `generativelanguage.googleapis.com` (host) | Send prompts to the Gemini API when you use example sentences or writing practice — only ever called if you've set your own API key. |
+| `generativelanguage.googleapis.com` (host) | Send prompts to the Gemini API when you use example sentences, writing practice, or audio export — only ever called if you've set your own API key. |
+| `www.googleapis.com` (host) | Upload a generated audio file to Google Drive when you click **☁ Save to Drive**. |
 
-Nothing is sent anywhere except the two Google endpoints above, and only in direct response to your actions (translating a word, or generating/polishing a sentence). There's no analytics, no third-party server, and no account system — your library lives in local browser storage unless you export it yourself.
+Nothing is sent anywhere except the Google endpoints above, and only in direct response to your actions (translating a word, generating/polishing a sentence, or exporting audio). The Drive upload uses a narrow `drive.file` OAuth scope, so it can only ever see/manage files this extension itself created — never the rest of your Drive. There's no analytics, no third-party server, and no account system otherwise — your library lives in local browser storage unless you export it yourself.
 
 ## Possible next steps
 
